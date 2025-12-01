@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-900 text-white font-sans overflow-hidden h-screen flex">
+
+    <aside class="w-64 bg-slate-800/50 backdrop-blur-md border-r border-white/10 flex flex-col p-6 hidden md:flex">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">T</div>
+            <h1 class="text-xl font-bold tracking-wide">Tracker</h1>
+        </div>
+        
+        <nav class="flex-1 space-y-2">
+            <a href="/dashboard" class="block p-3 text-gray-400 hover:bg-white/5 rounded-xl transition flex items-center gap-2">
+                <i data-lucide="layout-grid" class="w-5 h-5"></i> Dashboard
+            </a>
+            <a href="/transactions" class="block p-3 text-gray-400 hover:bg-white/5 rounded-xl transition flex items-center gap-2">
+                <i data-lucide="arrow-left-right" class="w-5 h-5"></i> Transactions
+            </a>
+            <a href="/categories" class="block p-3 bg-blue-600 text-white shadow-lg shadow-blue-500/30 rounded-xl transition flex items-center gap-2">
+                <i data-lucide="folder" class="w-5 h-5"></i> Categories
+            </a>
+            <a href="/settings" class="block p-3 text-gray-400 hover:bg-white/5 rounded-xl transition flex items-center gap-2">
+                <i data-lucide="settings" class="w-5 h-5"></i> Settings
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+        
+        <header class="h-20 border-b border-white/10 flex items-center justify-between px-8 bg-slate-900/80 backdrop-blur-md z-50">
+            <div>
+                <h2 class="text-2xl font-semibold text-white">Categories</h2>
+                <p class="text-xs text-gray-400 mt-1">Manage your spending tags</p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-lg shadow-blue-500/20 transition transform hover:scale-[1.02]">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Add Category
+                </button>
+                
+                {% if user.profile_picture %}
+                    <img src="/static/profile_pics/{{ user.profile_picture }}" class="w-10 h-10 rounded-full border-2 border-slate-700 object-cover">
+                {% else %}
+                    <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&color=fff" class="w-10 h-10 rounded-full border-2 border-slate-700">
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="flex-1 p-8 overflow-y-auto relative">
+            <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                <div class="absolute top-[20%] left-[20%] w-96 h-96 bg-blue-600/5 rounded-full blur-[100px]"></div>
+                <div class="absolute bottom-[10%] right-[10%] w-96 h-96 bg-purple-600/5 rounded-full blur-[100px]"></div>
+            </div>
+
+            <div class="relative z-20 max-w-6xl mx-auto mb-4">
+                {% if request.query_params.get('msg') %}
+                <div class="bg-green-500/10 border border-green-500/50 text-green-400 px-4 py-3 rounded-xl flex items-center gap-2">
+                    <i data-lucide="check-circle" class="w-5 h-5"></i> {{ request.query_params.get('msg') }}
+                </div>
+                {% endif %}
+                {% if request.query_params.get('error') %}
+                <div class="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl flex items-center gap-2">
+                    <i data-lucide="alert-circle" class="w-5 h-5"></i> {{ request.query_params.get('error') }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="relative z-10 max-w-7xl mx-auto fade-in">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% if categories %}
+                        {% for cat in categories %}
+                        <div class="bg-slate-800/40 backdrop-blur-md border border-white/5 p-5 rounded-2xl shadow-lg hover:border-blue-500/30 transition duration-300 group flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition shadow-inner border border-blue-500/10">
+                                    <i data-lucide="tag" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-lg text-white capitalize tracking-wide">{{ cat.name }}</h3>
+                                    {% if cat.user_id == user.id %}
+                                        <p class="text-[10px] text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded w-fit mt-1">My Category</p>
+                                    {% else %}
+                                        <p class="text-[10px] text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded w-fit mt-1">Public</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-2">
+                                {% if cat.user_id == user.id or user.role.name == 'admin' %}
+                                <form action="/categories/delete/{{ cat.id }}" method="POST" onsubmit="return confirm('Delete this category?');">
+                                    <button class="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition" title="Delete">
+                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <div class="relative group/tooltip">
+                                    <button class="p-2 text-gray-600 cursor-not-allowed">
+                                        <i data-lucide="lock" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="col-span-3 flex flex-col items-center justify-center py-20 text-gray-500">
+                             <div class="bg-slate-800 p-4 rounded-full mb-3 border border-white/5 inline-block">
+                                <i data-lucide="folder-open" class="w-8 h-8 opacity-50"></i>
+                            </div>
+                            <p>No categories found. Create one!</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="addCategoryModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center fade-in">
+        <div class="bg-slate-800 border border-white/10 p-8 rounded-3xl shadow-2xl w-full max-w-sm relative transform transition-all scale-100">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-xl font-bold text-white">New Category</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <form action="/categories/add" method="POST" class="space-y-6">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-2 uppercase tracking-wider font-semibold">Category Name</label>
+                    <input type="text" name="name" required placeholder="e.g. Gym, Freelance" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-blue-500 transition placeholder-gray-600">
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-5 py-3 text-sm font-medium text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition">Cancel</button>
+                    <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/25 transition">Create Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        function openModal() { document.getElementById('addCategoryModal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('addCategoryModal').classList.add('hidden'); }
+        
+        window.onclick = function(event) {
+            const modal = document.getElementById('addCategoryModal');
+            if (event.target == modal) closeModal();
+        }
+    </script>
+</body>
+</html>

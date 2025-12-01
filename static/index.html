@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker - Login</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Expense Tracker</h1>
+        <div id="login-form">
+            <h2>Login</h2>
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button onclick="login()">Login</button>
+            <p>Don't have an account? <a href="#" onclick="showRegister()">Register</a></p>
+        </div>
+        <div id="register-form" style="display: none;">
+            <h2>Register</h2>
+            <input type="text" id="reg-username" placeholder="Username" required>
+            <input type="email" id="reg-email" placeholder="Email" required>
+            <input type="password" id="reg-password" placeholder="Password" required>
+            <button onclick="register()">Register</button>
+            <p>Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+        </div>
+        <div id="dashboard" style="display: none;">
+            <h2>Dashboard</h2>
+            <button onclick="logout()">Logout</button>
+            <h3>Expenses</h3>
+            <button onclick="showAddExpense()">Add Expense</button>
+            <ul id="expenses-list"></ul>
+            <h3>Transfers</h3>
+            <button onclick="showTransfer()">Transfer Money</button>
+            <ul id="transfers-list"></ul>
+        </div>
+        <div id="add-expense" style="display: none;">
+            <h2>Add Expense</h2>
+            <input type="text" id="expense-description" placeholder="Description" required>
+            <input type="number" id="expense-amount" placeholder="Amount" required>
+            <select id="expense-category">
+                <!-- Categories will be loaded dynamically -->
+            </select>
+            <button onclick="addExpense()">Add</button>
+            <button onclick="hideAddExpense()">Cancel</button>
+        </div>
+        <div id="transfer" style="display: none;">
+            <h2>Transfer Money</h2>
+            <input type="email" id="transfer-email" placeholder="Recipient Email" required>
+            <input type="number" id="transfer-amount" placeholder="Amount" required>
+            <input type="text" id="transfer-description" placeholder="Description" required>
+            <button onclick="transferMoney()">Transfer</button>
+            <button onclick="hideTransfer()">Cancel</button>
+        </div>
+    </div>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

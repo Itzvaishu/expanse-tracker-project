@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transactions - Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-900 text-white font-sans overflow-hidden h-screen flex">
+
+    <aside class="w-64 bg-slate-800/50 backdrop-blur-md border-r border-white/10 flex flex-col p-6 hidden md:flex">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">T</div>
+            <h1 class="text-xl font-bold tracking-wide">Tracker</h1>
+        </div>
+        
+        <nav class="flex-1 space-y-2">
+            <a href="/dashboard" class="block p-3 text-gray-400 hover:bg-white/5 rounded-xl transition flex items-center gap-2">
+                <i data-lucide="layout-grid" class="w-5 h-5"></i> Dashboard
+            </a>
+            <a href="/transactions" class="block p-3 bg-blue-600 text-white shadow-lg shadow-blue-500/30 rounded-xl transition flex items-center gap-2">
+                <i data-lucide="arrow-left-right" class="w-5 h-5"></i> Transactions
+            </a>
+            <a href="/categories" class="block p-3 text-gray-400 hover:bg-white/5 rounded-xl transition flex items-center gap-2">
+                <i data-lucide="folder" class="w-5 h-5"></i> Categories
+            </a>
+            <a href="/settings" class="block p-3 text-gray-400 hover:bg-white/5 rounded-xl transition flex items-center gap-2">
+                <i data-lucide="settings" class="w-5 h-5"></i> Settings
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+        
+        <header class="h-20 border-b border-white/10 flex items-center justify-between px-8 bg-slate-900/80 backdrop-blur-md z-50">
+            <div>
+                <h2 class="text-2xl font-semibold">Transactions</h2>
+                <p class="text-xs text-gray-400">Manage your financial history</p>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <button onclick="openTxModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg shadow-blue-500/20 transition">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Add Transaction
+                </button>
+                
+                {% if user.profile_picture %}
+                    <img src="/static/profile_pics/{{ user.profile_picture }}" class="w-9 h-9 rounded-full border border-gray-500 object-cover">
+                {% else %}
+                    <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&color=fff" class="w-9 h-9 rounded-full border border-gray-500">
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="flex-1 p-8 overflow-y-auto relative">
+            <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                <div class="absolute top-[10%] right-[10%] w-96 h-96 bg-blue-600/10 rounded-full blur-[100px]"></div>
+                <div class="absolute bottom-[10%] left-[10%] w-96 h-96 bg-purple-600/10 rounded-full blur-[100px]"></div>
+            </div>
+
+            <div class="relative z-10 max-w-5xl mx-auto fade-in">
+                
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        {% if current_page > 1 %}
+                        <a href="/transactions?page={{ current_page - 1 }}" class="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 rounded-lg text-gray-300 hover:bg-white/5 transition text-sm">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i> Previous
+                        </a>
+                        {% else %}
+                        <button disabled class="flex items-center gap-2 px-4 py-2 bg-slate-800/50 border border-white/5 rounded-lg text-gray-600 cursor-not-allowed text-sm">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i> Previous
+                        </button>
+                        {% endif %}
+                    </div>
+                    
+                    <span class="text-sm text-gray-400 bg-slate-800/50 px-4 py-1 rounded-full border border-white/5">
+                        Page <span class="text-white font-bold">{{ current_page }}</span> of {{ total_pages }}
+                    </span>
+                    
+                    <div>
+                        {% if current_page < total_pages %}
+                        <a href="/transactions?page={{ current_page + 1 }}" class="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 rounded-lg text-gray-300 hover:bg-white/5 transition text-sm">
+                            Next <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </a>
+                        {% else %}
+                        <button disabled class="flex items-center gap-2 px-4 py-2 bg-slate-800/50 border border-white/5 rounded-lg text-gray-600 cursor-not-allowed text-sm">
+                            Next <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl overflow-hidden">
+                    <div class="divide-y divide-white/5">
+                        {% if transactions %}
+                            {% for t in transactions %}
+                            <div class="p-4 hover:bg-white/5 flex justify-between items-center transition duration-150">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-full flex items-center justify-center border 
+                                        {{ 'bg-rose-500/10 border-rose-500/20 text-rose-400' if t.type == 'expense' else 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' }}">
+                                        {% if t.type == 'expense' %}
+                                            <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                                        {% else %}
+                                            <i data-lucide="arrow-down-left" class="w-5 h-5"></i>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div>
+                                        <p class="font-medium text-white text-lg">{{ t.description }}</p>
+                                        <p class="text-xs text-gray-400 mt-0.5">
+                                            {{ t.created_at.strftime('%d %b, %Y') }} • 
+                                            <span class="uppercase tracking-wider opacity-70 font-semibold text-[10px] bg-white/5 px-1.5 py-0.5 rounded ml-1">{{ t.type }}</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-6">
+                                    <span class="font-bold text-lg {{ 'text-rose-400' if t.type == 'expense' else 'text-emerald-400' }}">
+                                        {{ "-" if t.type == 'expense' else "+" }} ₹{{ t.amount }}
+                                    </span>
+
+                                    <form action="/transactions/delete/{{ t.type }}/{{ t.id }}" method="POST" onsubmit="return confirm('Delete this transaction?');">
+                                        <button type="submit" class="text-gray-500 hover:text-rose-400 transition p-2 hover:bg-rose-400/10 rounded-lg" title="Delete">
+                                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="flex flex-col items-center justify-center py-16 text-gray-500">
+                                <div class="bg-slate-800 p-4 rounded-full mb-3 border border-white/5">
+                                    <i data-lucide="inbox" class="w-8 h-8 opacity-50"></i>
+                                </div>
+                                <p>No transactions found on this page.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="addTxModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center fade-in">
+        <div class="bg-slate-800 border border-white/10 p-8 rounded-3xl shadow-2xl w-full max-w-md relative">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white">Add Transaction</h3>
+                <button onclick="closeTxModal()" class="text-gray-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <form action="/transactions/add" method="POST" class="space-y-4">
+                
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Type</label>
+                    <select name="type" id="typeSelect" onchange="toggleCategory()" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition appearance-none">
+                        <option value="expense">Expense</option>
+                        <option value="income">Income</option>
+                    </select>
+                </div>
+
+                <div id="categoryDiv">
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Category</label>
+                    <select name="category_id" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition">
+                        <option value="">Select Category</option>
+                        
+                        {% if categories %}
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>No categories available</option>
+                        {% endif %}
+                        
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Description</label>
+                    <input type="text" name="description" required placeholder="e.g. Lunch, Salary" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Amount (₹)</label>
+                    <input type="number" name="amount" step="0.01" required placeholder="0.00" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition">
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeTxModal()" class="px-5 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition">Cancel</button>
+                    <button type="submit" class="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition">Save Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        
+        function openTxModal() { document.getElementById('addTxModal').classList.remove('hidden'); }
+        function closeTxModal() { document.getElementById('addTxModal').classList.add('hidden'); }
+
+        // Hide Category if Income is selected
+        function toggleCategory() {
+            const type = document.getElementById('typeSelect').value;
+            const catDiv = document.getElementById('categoryDiv');
+            if (type === 'income') {
+                catDiv.style.display = 'none';
+            } else {
+                catDiv.style.display = 'block';
+            }
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('addTxModal');
+            if (event.target == modal) closeTxModal();
+        }
+    </script>
+</body>
+</html>

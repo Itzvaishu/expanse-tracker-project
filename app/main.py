@@ -1,0 +1,661 @@
+from fastapi import FastAPI, Request, Form, Depends, status, HTTPException, UploadFile, File
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from sqlalchemy.orm import Session
+from passlib.context import CryptContext
+from sqlalchemy import func
+from typing import Optional
+import random
+import string
+import shutil
+import os
+import math
+
+# --- Internal Imports ---
+from app.db.session import get_db
+from app.api.v1.router import router as v1_router
+from app.services.auth_service import authenticate_user
+from app.services.email_service import send_password_change_email
+from app.models import User, Category, Expense, Transfer, Role
+from app.services.report_service import (
+    get_monthly_expense_report,
+    get_monthly_transfers,
+    get_recent_expenses,
+    get_recent_transfers,
+    get_user_categories,
+    get_category_pie_data,
+    get_paginated_expenses,
+    get_paginated_transfers,
+    get_total_transaction_count
+)
+
+# --- App Configuration ---
+app = FastAPI()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# --- Middleware ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# WARNING: Change this secret key for production!
+app.add_middleware(SessionMiddleware, secret_key="super-secret-key-change-this")
+
+# --- Static Files & Templates ---
+os.makedirs("static/profile_pics", exist_ok=True) 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+# --- API Router ---
+app.include_router(v1_router, prefix="/api/v1")
+
+
+# ================= DEPENDENCIES =================
+
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    """Retrieves the currently logged-in user from the session."""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return None
+    return db.query(User).filter(User.id == user_id).first()
+
+def get_admin_user(user: User = Depends(get_current_user)):
+    """Checks if the current user has 'admin' privileges."""
+    if not user or user.role.name != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Admins can perform this action!"
+        )
+    return user
+
+
+# ================= AUTH ROUTES =================
+
+@app.get("/", response_class=HTMLResponse)
+async def root_redirect():
+    return RedirectResponse(url="/login")
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_get(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+
+@app.post("/login", response_class=HTMLResponse)
+async def login_post(
+    request: Request, 
+    username: str = Form(...), 
+    password: str = Form(...), 
+    db: Session = Depends(get_db)
+):
+    user = authenticate_user(db, username, password)
+    if not user:
+        return templates.TemplateResponse("login.html", {
+            "request": request, 
+            "error": "Invalid username or password"
+        })
+    
+    request.session["user_id"] = user.id
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@app.post("/register", response_class=HTMLResponse)
+async def register_user(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    # 1. Check if user already exists
+    existing_user = db.query(User).filter((User.username == username) | (User.email == email)).first()
+    if existing_user:
+        return templates.TemplateResponse("register.html", {
+            "request": request, 
+            "error": "Username or Email already exists!"
+        })
+
+    # 2. Hash password
+    hashed_pw = pwd_context.hash(password)
+    
+    # 3. Generate Account Number
+    generated_account_num = "".join(random.choices(string.digits, k=10))
+
+    # 4. Assign Default Role ('user')
+    user_role = db.query(Role).filter(Role.name == "user").first()
+    if not user_role:
+        user_role = Role(name="user")
+        db.add(user_role)
+        db.commit()
+        db.refresh(user_role)
+
+    # 5. Create User
+    new_user = User(
+        username=username, 
+        email=email, 
+        hashed_password=hashed_pw, 
+        role_id=user_role.id,
+        account_number=generated_account_num
+    )
+    
+    db.add(new_user)
+    db.commit()
+
+    return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login")
+
+
+# ================= DASHBOARD ROUTES =================
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(
+    request: Request, 
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(url="/login")
+
+    # Monthly Stats (For Charts/Cards)
+    monthly_expenses = get_monthly_expense_report(db, user)
+    monthly_transfers = get_monthly_transfers(db, user)
+    
+    # Recent Activity
+    recent_expenses = get_recent_expenses(db, user, limit=5)
+    recent_transfers = get_recent_transfers(db, user, limit=5)
+    
+    # --- LIFETIME BALANCE CALCULATION ---
+    total_income_all = db.query(func.sum(Transfer.amount)).filter(
+        (Transfer.receiver_id == user.id) | (Transfer.sender_id == user.id)
+    ).scalar() or 0.0
+
+    total_expense_all = db.query(func.sum(Expense.debit)).filter(
+        Expense.user_id == user.id
+    ).scalar() or 0.0
+
+    balance = total_income_all - total_expense_all
+    
+    chart_labels, chart_data = get_category_pie_data(db, user)
+    
+    # Fetch Categories (Public + Personal for dropdown)
+    personal_cats = db.query(Category).filter(Category.user_id == user.id).all()
+    public_cats = db.query(Category).join(User).join(Role).filter(Role.name == "admin").all()
+    
+    # Merge for dropdown: create a dict to avoid duplicates by name
+    # Admin categories are added first, then overridden by personal categories if names match
+    all_categories_dict = {c.name: c for c in public_cats}
+    for c in personal_cats:
+        all_categories_dict[c.name] = c
+    final_categories = list(all_categories_dict.values())
+
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user": user,
+        "monthly_expenses": monthly_expenses,
+        "monthly_transfers": monthly_transfers,
+        "balance": balance,
+        "recent_expenses": recent_expenses,
+        "recent_transfers": recent_transfers,
+        "chart_labels": chart_labels,
+        "chart_data": chart_data,
+        "categories": final_categories
+    })
+
+
+@app.get("/transactions", response_class=HTMLResponse)
+async def transactions_page(
+    request: Request, 
+    page: int = 1, 
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(url="/login")
+
+    PAGE_SIZE = 10 
+    
+    expenses = get_paginated_expenses(db, user, page, PAGE_SIZE)
+    transfers = get_paginated_transfers(db, user, page, PAGE_SIZE)
+    
+    all_transactions = []
+    for exp in expenses:
+        t = exp.__dict__.copy()
+        if '_sa_instance_state' in t: del t['_sa_instance_state']
+        t['type'] = 'expense'
+        t['amount'] = exp.debit
+        all_transactions.append(t)
+        
+    for tr in transfers:
+        t = tr.__dict__.copy()
+        if '_sa_instance_state' in t: del t['_sa_instance_state']
+        t['type'] = 'transfer'
+        if not t.get('description'): t['description'] = "Transfer"
+        all_transactions.append(t)
+
+    all_transactions.sort(key=lambda x: x['created_at'], reverse=True)
+    
+    total_items = get_total_transaction_count(db, user)
+    total_pages = math.ceil(total_items / PAGE_SIZE) if total_items > 0 else 1
+    
+    # --- FETCH CATEGORIES FOR MODAL ---
+    personal_cats = db.query(Category).filter(Category.user_id == user.id).all()
+    public_cats = db.query(Category).join(User).join(Role).filter(Role.name == "admin").all()
+    
+    all_categories_dict = {c.name: c for c in public_cats}
+    for c in personal_cats:
+        all_categories_dict[c.name] = c
+    final_categories = list(all_categories_dict.values())
+    
+    return templates.TemplateResponse("transactions.html", {
+        "request": request,
+        "user": user, 
+        "transactions": all_transactions, 
+        "current_page": page,
+        "total_pages": total_pages,
+        "categories": final_categories
+    })
+
+
+@app.post("/transactions/add")
+async def add_transaction(
+    request: Request,
+    description: str = Form(...),
+    amount: float = Form(...),
+    type: str = Form(...),
+    category_id: str = Form(""),
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    if type == "expense":
+        # Calculate Balance First
+        total_income = db.query(func.sum(Transfer.amount)).filter(Transfer.receiver_id == user.id).scalar() or 0.0
+        total_expense = db.query(func.sum(Expense.debit)).filter(Expense.user_id == user.id).scalar() or 0.0
+        current_balance = total_income - total_expense
+
+        if current_balance < amount:
+            return RedirectResponse(url="/dashboard?error=insufficient_balance", status_code=status.HTTP_303_SEE_OTHER)
+
+        category_id_int = int(category_id) if category_id and category_id.isdigit() else None
+
+        new_entry = Expense(
+            description=description,
+            debit=amount,
+            user_id=user.id,
+            category_id=category_id_int
+        )
+        db.add(new_entry)
+
+    else:
+        new_entry = Transfer(
+            description=description,
+            amount=amount,
+            sender_id=user.id,
+            receiver_id=user.id
+        )
+        db.add(new_entry)
+        
+    db.commit()
+    return RedirectResponse(url="/transactions", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/transactions/delete/{type}/{id}")
+async def delete_transaction(
+    type: str,
+    id: int,
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    if type == "expense":
+        entry = db.query(Expense).filter(Expense.id == id, Expense.user_id == user.id).first()
+    else:
+        entry = db.query(Transfer).filter(Transfer.id == id, (Transfer.sender_id == user.id) | (Transfer.receiver_id == user.id)).first()
+
+    if entry:
+        db.delete(entry)
+        db.commit()
+
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ================= CATEGORIES ROUTES =================
+
+# --- Public + Private Categories Logic ---
+@app.get("/categories", response_class=HTMLResponse)
+async def categories_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(url="/login")
+
+    # 1. User's Personal Categories
+    personal_cats = db.query(Category).filter(Category.user_id == user.id).all()
+
+    # 2. Admin's Public Categories
+    public_cats = db.query(Category).join(User).join(Role).filter(Role.name == "admin").all()
+
+    # 3. Merge (Admin ones first, User ones override if duplicates logic needed)
+    all_categories_dict = {}
+    for c in public_cats:
+        all_categories_dict[c.name] = c
+    for c in personal_cats:
+        all_categories_dict[c.name] = c
+        
+    final_list = list(all_categories_dict.values())
+
+    return templates.TemplateResponse("categories.html", {
+        "request": request,
+        "user": user,
+        "categories": final_list
+    })
+
+@app.post("/categories/add")
+async def add_category(
+    request: Request,
+    name: str = Form(...),
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    clean_name = name.strip()
+    
+    # Check if category already exists for the current user
+    existing = db.query(Category).filter(
+        Category.name == clean_name, 
+        Category.user_id == user.id
+    ).first()
+    
+    if existing:
+        return RedirectResponse(url="/categories?error=Category already exists!", status_code=303)
+    
+    try:
+        new_cat = Category(name=clean_name, user_id=user.id)
+        db.add(new_cat)
+        db.commit()
+        return RedirectResponse(url="/categories?msg=Category Added Successfully", status_code=303)
+    except Exception as e:
+        db.rollback()
+        print(f"Error adding category: {e}")
+        return RedirectResponse(url=f"/categories?error=Server Error: {e}", status_code=303)
+
+@app.post("/categories/delete/{cat_id}")
+async def delete_category(
+    cat_id: int,
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user) 
+):
+    category = db.query(Category).filter(Category.id == cat_id).first()
+    
+    if category:
+        # Security: Allow delete only if User created it OR User is Admin
+        if user.role.name == 'admin' or category.user_id == user.id:
+            db.delete(category)
+            db.commit()
+        else:
+            print("Unauthorized delete attempt on public category")
+            
+    return RedirectResponse(url="/categories", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# ================= SETTINGS & ADMIN PANEL ===============
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request,
+    page: int = 1, 
+    user_page: int = 1, 
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(url="/login")
+
+    # Variables initialization
+    all_users = []
+    global_transactions = []
+    PAGE_SIZE = 10
+    USER_PAGE_SIZE = 5
+    total_pages = 1
+    user_total_pages = 1
+
+    # --- ADMIN LOGIC ---
+    if user.role.name == "admin":
+        # 1. Fetch Users (Paginated)
+        total_users = db.query(User).count()
+        user_total_pages = math.ceil(total_users / USER_PAGE_SIZE) if total_users > 0 else 1
+        user_start = (user_page - 1) * USER_PAGE_SIZE
+        all_users = db.query(User).offset(user_start).limit(USER_PAGE_SIZE).all()
+
+        # 2. Fetch Transactions (Simplified merge for admin view)
+        all_expenses = db.query(Expense).all()
+        all_transfers = db.query(Transfer).all()
+
+        for exp in all_expenses:
+            t = exp.__dict__.copy()
+            if '_sa_instance_state' in t: del t['_sa_instance_state']
+            t['type'] = 'expense'
+            t['amount'] = exp.debit
+            t['user_name'] = exp.user.username if exp.user else "Unknown"
+            global_transactions.append(t)
+
+        for tr in all_transfers:
+            t = tr.__dict__.copy()
+            if '_sa_instance_state' in t: del t['_sa_instance_state']
+            t['type'] = 'transfer'
+            t['description'] = t.get('description', 'Transfer')
+            t['user_name'] = tr.receiver.username if tr.receiver else "Unknown"
+            global_transactions.append(t)
+
+        # Sort and Paginate List
+        global_transactions.sort(key=lambda x: x['created_at'], reverse=True)
+        total_items = len(global_transactions)
+        total_pages = math.ceil(total_items / PAGE_SIZE) if total_items > 0 else 1
+        
+        start = (page - 1) * PAGE_SIZE
+        end = start + PAGE_SIZE
+        global_transactions = global_transactions[start:end]
+
+    # --- RENDER TEMPLATE ---
+    return templates.TemplateResponse("settings.html", {
+        "request": request,
+        "user": user,                # Critical for profile tab
+        "all_users": all_users,      # Critical for Admin user tab
+        "global_transactions": global_transactions, # Critical for Admin transactions tab
+        "current_page": page,
+        "total_pages": total_pages,
+        "user_current_page": user_page,
+        "user_total_pages": user_total_pages
+    })
+
+
+# --- PROFILE & PASSWORD UPDATE ROUTES ---
+
+@app.post("/update-profile")
+async def update_profile(
+    username: str = Form(...),
+    email: str = Form(...),
+    profile_pic: UploadFile = File(None),
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(url="/login")
+
+    # Check uniqueness (excluding self)
+    existing = db.query(User).filter(
+        (User.username == username) | (User.email == email),
+        User.id != user.id
+    ).first()
+
+    if existing:
+        return RedirectResponse(url="/settings?error=Username or Email already taken", status_code=303)
+
+    # --- FILE UPLOAD LOGIC ---
+    if profile_pic and profile_pic.filename:
+        # Create directory if not exists
+        os.makedirs("static/profile_pics", exist_ok=True)
+
+        file_extension = profile_pic.filename.split(".")[-1]
+        file_name = f"{user.id}_profile.{file_extension}"
+        file_path = f"static/profile_pics/{file_name}"
+
+        # Save File
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(profile_pic.file, buffer)
+
+        # Update DB column
+        user.profile_picture = file_name
+
+    # Update Text Data
+    user.username = username
+    user.email = email
+    db.commit()
+    
+    return RedirectResponse(url="/settings?msg=Profile Updated", status_code=303)
+
+
+@app.post("/change-password")
+async def change_password(
+    old_password: str = Form(...),
+    new_password: str = Form(...),
+    db: Session = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(url="/login")
+
+    #Verify Old Password
+    if not pwd_context.verify(old_password, user.hashed_password):
+        return RedirectResponse(url="/settings?error=Incorrect Old Password", status_code=303)
+
+   
+    user.hashed_password = pwd_context.hash(new_password)
+    db.commit()
+
+   
+    try:
+        send_password_change_email(user.email, user.username)
+    except Exception as e:
+        print(f"Email Error: {e}")
+
+    return RedirectResponse(url="/settings?msg=Password Changed Successfully. Email Sent!", status_code=303)
+
+
+# --- ADMIN ACTIONS ---
+
+@app.post("/users/promote/{user_id}")
+async def promote_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin_user = Depends(get_admin_user) 
+):
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if target_user:
+        admin_role = db.query(Role).filter(Role.name == "admin").first()
+        if admin_role:
+            target_user.role_id = admin_role.id
+            db.commit()
+    return RedirectResponse(url="/settings", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/users/demote/{user_id}")
+async def demote_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin_user = Depends(get_admin_user) 
+):
+    if user_id == admin_user.id:
+        return RedirectResponse(url="/settings?error=Cannot demote yourself", status_code=303)
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if target_user:
+        user_role = db.query(Role).filter(Role.name == "user").first()
+        if user_role:
+            target_user.role_id = user_role.id
+            db.commit()
+    return RedirectResponse(url="/settings", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/admin/transactions/delete/{type}/{id}")
+async def admin_delete_transaction(
+    type: str, 
+    id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_admin_user)
+):
+    if type == "expense":
+        entry = db.query(Expense).filter(Expense.id == id).first()
+    else:
+        entry = db.query(Transfer).filter(Transfer.id == id).first()
+        
+    if entry:
+        db.delete(entry)
+        db.commit()
+        
+    return RedirectResponse(url="/settings", status_code=status.HTTP_303_SEE_OTHER)
+
+
+# --- API: Get Single User Details (For Admin Modal) ---
+@app.get("/admin/user-details/{target_user_id}")
+async def get_user_details(
+    target_user_id: int,
+    db: Session = Depends(get_db),
+    admin_user = Depends(get_admin_user) # Only Admin can access
+):
+    user = db.query(User).filter(User.id == target_user_id).first()
+    if not user:
+        return JSONResponse({"error": "User not found"}, status_code=404)
+
+    expenses = db.query(Expense).filter(Expense.user_id == user.id).all()
+    transfers = db.query(Transfer).filter((Transfer.sender_id == user.id) | (Transfer.receiver_id == user.id)).all()
+
+    transactions = []
+    total_income = 0
+    total_expense = 0
+
+    for exp in expenses:
+        total_expense += exp.debit
+        transactions.append({
+            "type": "expense",
+            "description": exp.description,
+            "amount": exp.debit,
+            "date": exp.created_at.strftime('%Y-%m-%d'),
+            "category": exp.category.name if exp.category else "General"
+        })
+
+    for tr in transfers:
+        total_income += tr.amount
+        transactions.append({
+            "type": "transfer",
+            "description": tr.description or "Transfer",
+            "amount": tr.amount,
+            "date": tr.created_at.strftime('%Y-%m-%d'),
+            "category": "Income"
+        })
+
+    transactions.sort(key=lambda x: x['date'], reverse=True)
+
+    return JSONResponse({
+        "username": user.username,
+        "email": user.email,
+        "profile_pic": user.profile_picture,
+        "role": user.role.name,
+        "balance": total_income - total_expense,
+        "total_income": total_income,
+        "total_expense": total_expense,
+        "transactions": transactions
+    })

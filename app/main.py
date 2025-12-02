@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from sqlalchemy import func
 from typing import Optional
+from datetime import datetime, timedelta
 import random
 import string
 import shutil
@@ -18,7 +19,8 @@ import math
 from app.db.session import get_db
 from app.api.v1.router import router as v1_router
 from app.services.auth_service import authenticate_user
-from app.services.email_service import send_password_change_email
+# Import email service if you have it, or ensure the function exists in utils
+from app.utils.email import send_otp_email 
 from app.models import User, Category, Expense, Transfer, Role
 from app.services.report_service import (
     get_monthly_expense_report,
@@ -49,6 +51,7 @@ app.add_middleware(
 app.add_middleware(SessionMiddleware, secret_key="super-secret-key-change-this")
 
 # --- Static Files & Templates ---
+# Ensure profile pics directory exists
 os.makedirs("static/profile_pics", exist_ok=True) 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -132,6 +135,7 @@ async def register_user(
     # 4. Assign Default Role ('user')
     user_role = db.query(Role).filter(Role.name == "user").first()
     if not user_role:
+        # Create default roles if they don't exist
         user_role = Role(name="user")
         db.add(user_role)
         db.commit()
@@ -158,6 +162,7 @@ async def logout(request: Request):
 
 
 # ================= DASHBOARD ROUTES =================
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(
     request: Request, 
@@ -176,16 +181,19 @@ async def dashboard(
     recent_transfers = get_recent_transfers(db, user, limit=5)
     
     # --- LIFETIME BALANCE CALCULATION ---
+    # Calculate total income (from Transfers)
     total_income_all = db.query(func.sum(Transfer.amount)).filter(
         (Transfer.receiver_id == user.id) | (Transfer.sender_id == user.id)
     ).scalar() or 0.0
 
+    # Calculate total expense
     total_expense_all = db.query(func.sum(Expense.debit)).filter(
         Expense.user_id == user.id
     ).scalar() or 0.0
 
     balance = total_income_all - total_expense_all
     
+    # Get Chart Data
     chart_labels, chart_data = get_category_pie_data(db, user)
     
     # Fetch Categories (Public + Personal for dropdown)
@@ -193,7 +201,6 @@ async def dashboard(
     public_cats = db.query(Category).join(User).join(Role).filter(Role.name == "admin").all()
     
     # Merge for dropdown: create a dict to avoid duplicates by name
-    # Admin categories are added first, then overridden by personal categories if names match
     all_categories_dict = {c.name: c for c in public_cats}
     for c in personal_cats:
         all_categories_dict[c.name] = c
@@ -212,6 +219,8 @@ async def dashboard(
         "categories": final_categories
     })
 
+
+# ================= TRANSACTIONS ROUTES =================
 
 @app.get("/transactions", response_class=HTMLResponse)
 async def transactions_page(
@@ -281,7 +290,7 @@ async def add_transaction(
         return RedirectResponse(url="/login")
     
     if type == "expense":
-        # Calculate Balance First
+        # Calculate Balance First (Optional Check)
         total_income = db.query(func.sum(Transfer.amount)).filter(Transfer.receiver_id == user.id).scalar() or 0.0
         total_expense = db.query(func.sum(Expense.debit)).filter(Expense.user_id == user.id).scalar() or 0.0
         current_balance = total_income - total_expense
@@ -300,11 +309,12 @@ async def add_transaction(
         db.add(new_entry)
 
     else:
+        # Income: Using Transfer model (Sender/Receiver ID logic)
         new_entry = Transfer(
             description=description,
             amount=amount,
             sender_id=user.id,
-            receiver_id=user.id
+            receiver_id=user.id # Self-transfer for income tracking
         )
         db.add(new_entry)
         
@@ -332,7 +342,6 @@ async def delete_transaction(
 
 # ================= CATEGORIES ROUTES =================
 
-# --- Public + Private Categories Logic ---
 @app.get("/categories", response_class=HTMLResponse)
 async def categories_page(
     request: Request,
@@ -348,7 +357,7 @@ async def categories_page(
     # 2. Admin's Public Categories
     public_cats = db.query(Category).join(User).join(Role).filter(Role.name == "admin").all()
 
-    # 3. Merge (Admin ones first, User ones override if duplicates logic needed)
+    # 3. Merge (Admin ones first)
     all_categories_dict = {}
     for c in public_cats:
         all_categories_dict[c.name] = c
@@ -394,26 +403,25 @@ async def add_category(
         print(f"Error adding category: {e}")
         return RedirectResponse(url=f"/categories?error=Server Error: {e}", status_code=303)
 
+# --- Admin Only: Delete Category ---
 @app.post("/categories/delete/{cat_id}")
 async def delete_category(
     cat_id: int,
     db: Session = Depends(get_db),
-    user = Depends(get_current_user) 
+    user: User = Depends(get_current_user) 
 ):
     category = db.query(Category).filter(Category.id == cat_id).first()
     
     if category:
-        # Security: Allow delete only if User created it OR User is Admin
+        # Allow delete only if User created it OR User is Admin
         if user.role.name == 'admin' or category.user_id == user.id:
             db.delete(category)
             db.commit()
-        else:
-            print("Unauthorized delete attempt on public category")
             
     return RedirectResponse(url="/categories", status_code=status.HTTP_303_SEE_OTHER)
 
 
-# ================= SETTINGS & ADMIN PANEL ===============
+# ================= SETTINGS & ADMIN PANEL =================
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(
@@ -426,7 +434,6 @@ async def settings_page(
     if not user:
         return RedirectResponse(url="/login")
 
-    # Variables initialization
     all_users = []
     global_transactions = []
     PAGE_SIZE = 10
@@ -442,7 +449,7 @@ async def settings_page(
         user_start = (user_page - 1) * USER_PAGE_SIZE
         all_users = db.query(User).offset(user_start).limit(USER_PAGE_SIZE).all()
 
-        # 2. Fetch Transactions (Simplified merge for admin view)
+        # 2. Fetch Transactions
         all_expenses = db.query(Expense).all()
         all_transfers = db.query(Transfer).all()
 
@@ -453,16 +460,17 @@ async def settings_page(
             t['amount'] = exp.debit
             t['user_name'] = exp.user.username if exp.user else "Unknown"
             global_transactions.append(t)
-
+            
         for tr in all_transfers:
             t = tr.__dict__.copy()
             if '_sa_instance_state' in t: del t['_sa_instance_state']
             t['type'] = 'transfer'
             t['description'] = t.get('description', 'Transfer')
+            # Handle potential None for receiver
             t['user_name'] = tr.receiver.username if tr.receiver else "Unknown"
             global_transactions.append(t)
 
-        # Sort and Paginate List
+        # Sort and Paginate
         global_transactions.sort(key=lambda x: x['created_at'], reverse=True)
         total_items = len(global_transactions)
         total_pages = math.ceil(total_items / PAGE_SIZE) if total_items > 0 else 1
@@ -471,12 +479,11 @@ async def settings_page(
         end = start + PAGE_SIZE
         global_transactions = global_transactions[start:end]
 
-    # --- RENDER TEMPLATE ---
     return templates.TemplateResponse("settings.html", {
-        "request": request,
-        "user": user,                # Critical for profile tab
-        "all_users": all_users,      # Critical for Admin user tab
-        "global_transactions": global_transactions, # Critical for Admin transactions tab
+        "request": request, 
+        "user": user,
+        "all_users": all_users,
+        "global_transactions": global_transactions,
         "current_page": page,
         "total_pages": total_pages,
         "user_current_page": user_page,
@@ -486,7 +493,7 @@ async def settings_page(
 
 # --- PROFILE & PASSWORD UPDATE ROUTES ---
 
-@app.post("/update-profile")
+@app.post("/settings/update-profile")
 async def update_profile(
     username: str = Form(...),
     email: str = Form(...),
@@ -506,23 +513,24 @@ async def update_profile(
     if existing:
         return RedirectResponse(url="/settings?error=Username or Email already taken", status_code=303)
 
-    # --- FILE UPLOAD LOGIC ---
+    # File Upload
     if profile_pic and profile_pic.filename:
-        # Create directory if not exists
-        os.makedirs("static/profile_pics", exist_ok=True)
+        upload_dir = "static/profile_pics"
+        if not os.path.exists(upload_dir):
+            os.makedirs(upload_dir)
 
         file_extension = profile_pic.filename.split(".")[-1]
         file_name = f"{user.id}_profile.{file_extension}"
-        file_path = f"static/profile_pics/{file_name}"
+        file_path = f"{upload_dir}/{file_name}"
+        
+        # Reset file pointer to beginning
+        await profile_pic.seek(0)
 
-        # Save File
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(profile_pic.file, buffer)
 
-        # Update DB column
         user.profile_picture = file_name
 
-    # Update Text Data
     user.username = username
     user.email = email
     db.commit()
@@ -530,9 +538,9 @@ async def update_profile(
     return RedirectResponse(url="/settings?msg=Profile Updated", status_code=303)
 
 
-@app.post("/change-password")
+@app.post("/settings/change-password")
 async def change_password(
-    old_password: str = Form(...),
+    current_password: str = Form(...),
     new_password: str = Form(...),
     db: Session = Depends(get_db),
     user = Depends(get_current_user)
@@ -540,21 +548,15 @@ async def change_password(
     if not user:
         return RedirectResponse(url="/login")
 
-    #Verify Old Password
-    if not pwd_context.verify(old_password, user.hashed_password):
+    if not pwd_context.verify(current_password, user.hashed_password):
         return RedirectResponse(url="/settings?error=Incorrect Old Password", status_code=303)
 
-   
     user.hashed_password = pwd_context.hash(new_password)
     db.commit()
+    
+    # Optional: Send email logic here
 
-   
-    try:
-        send_password_change_email(user.email, user.username)
-    except Exception as e:
-        print(f"Email Error: {e}")
-
-    return RedirectResponse(url="/settings?msg=Password Changed Successfully. Email Sent!", status_code=303)
+    return RedirectResponse(url="/settings?msg=Password Changed Successfully", status_code=303)
 
 
 # --- ADMIN ACTIONS ---
@@ -597,6 +599,7 @@ async def admin_delete_transaction(
     db: Session = Depends(get_db),
     user: User = Depends(get_admin_user)
 ):
+    entry = None
     if type == "expense":
         entry = db.query(Expense).filter(Expense.id == id).first()
     else:
@@ -614,7 +617,7 @@ async def admin_delete_transaction(
 async def get_user_details(
     target_user_id: int,
     db: Session = Depends(get_db),
-    admin_user = Depends(get_admin_user) # Only Admin can access
+    admin_user = Depends(get_admin_user)
 ):
     user = db.query(User).filter(User.id == target_user_id).first()
     if not user:
@@ -659,3 +662,111 @@ async def get_user_details(
         "total_expense": total_expense,
         "transactions": transactions
     })
+
+
+# --- FORGOT PASSWORD LOGIC ---
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    return templates.TemplateResponse("forgot_password.html", {"request": request})
+
+@app.post("/forgot-password")
+async def send_reset_otp(
+    request: Request, 
+    email: str = Form(...), 
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        return templates.TemplateResponse("forgot_password.html", {"request": request, "error": "Email not found!"})
+
+    otp = "".join(random.choices(string.digits, k=6))
+    user.reset_otp = otp
+    user.otp_expiry = datetime.utcnow() + timedelta(minutes=10)
+    db.commit()
+
+    try:
+        await send_otp_email(email, otp)
+    except Exception as e:
+        print(f"Mail Error: {e}")
+        return templates.TemplateResponse("forgot_password.html", {"request": request, "error": "Failed to send email."})
+
+    return RedirectResponse(url=f"/reset-password?email={email}", status_code=303)
+
+@app.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(request: Request, email: str):
+    return templates.TemplateResponse("reset_password.html", {"request": request, "email": email})
+
+
+
+
+@app.post("/reset-password")
+async def perform_reset(
+    request: Request,
+    email: str = Form(...),
+    otp: str = Form(...),
+    new_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == email).first()
+    
+    if not user:
+        return templates.TemplateResponse("reset_password.html", {"request": request, "email": email, "error": "User not found"})
+
+    # 1. Check OTP
+    if user.reset_otp != otp:
+        return templates.TemplateResponse("reset_password.html", {"request": request, "email": email, "error": "Invalid OTP"})
+    
+    # 2. Check Expiry
+    if user.otp_expiry and datetime.utcnow() > user.otp_expiry:
+        return templates.TemplateResponse("reset_password.html", {"request": request, "email": email, "error": "OTP Expired"})
+
+    # 3. FIX: Check Password Length (Yeh zaroori hai)
+    if len(new_password) > 72:
+         return templates.TemplateResponse("reset_password.html", {
+            "request": request, 
+            "email": email, 
+            "error": "Password too long! Keep it under 72 characters."
+        })
+
+    # 4. Hash Password
+    user.hashed_password = pwd_context.hash(new_password)
+    
+    # 5. Clear OTP
+    user.reset_otp = None
+    user.otp_expiry = None
+    db.commit()
+
+    return RedirectResponse(url="/login?msg=Password Reset Successful", status_code=303)
+'''@app.post("/reset-password")
+async def perform_reset(
+    request: Request,
+    email: str = Form(...),
+    otp: str = Form(...),
+    new_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == email).first()
+    
+    if not user:
+        return templates.TemplateResponse("reset_password.html", {"request": request, "email": email, "error": "User not found"})
+
+    if user.reset_otp != otp:
+        return templates.TemplateResponse("reset_password.html", {"request": request, "email": email, "error": "Invalid OTP"})
+    
+    if user.otp_expiry and datetime.utcnow() > user.otp_expiry:
+        return templates.TemplateResponse("reset_password.html", {"request": request, "email": email, "error": "OTP Expired"})
+
+    if len(new_password) > 72:
+         return templates.TemplateResponse("reset_password.html", {
+            "request": request, 
+            "email": email, 
+            "error": "Password too long! Keep it under 72 characters."
+        })
+
+    user.hashed_password = pwd_context.hash(new_password)
+    user.reset_otp = None
+    user.otp_expiry = None
+    db.commit()
+
+    return RedirectResponse(url="/login?msg=Password Reset Successful", status_code=303)'''

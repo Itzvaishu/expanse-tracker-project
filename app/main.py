@@ -539,7 +539,7 @@ async def change_password(
 ):
     if not user:
         return RedirectResponse(url="/login")
-#test
+
     #Verify Old Password
     if not pwd_context.verify(old_password, user.hashed_password):
         return RedirectResponse(url="/settings?error=Incorrect Old Password", status_code=303)

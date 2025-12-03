@@ -3,270 +3,310 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Dashboard - Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style> 
-        body { font-family: 'Inter', sans-serif; }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body { font-family: 'Outfit', sans-serif; }
+        
+        /* Animated Background */
+        .animated-bg {
+            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 100%);
+            background-size: 200% 200%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+
+        /* Glass Effect */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .glass-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 10px; }
+        
+        .fade-in { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-900 text-white font-sans overflow-hidden h-screen flex">
+<body class="animated-bg text-white h-screen flex overflow-hidden">
 
-    <aside class="w-64 bg-slate-800/50 backdrop-blur-md border-r border-white/10 flex flex-col hidden md:flex">
-        <div class="p-6 flex items-center gap-3 border-b border-white/10">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <i data-lucide="wallet" class="w-5 h-5 text-white"></i>
+    <aside class="w-72 glass-card border-r-0 m-4 rounded-3xl flex flex-col hidden md:flex z-50">
+        <div class="p-8 flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <i data-lucide="zap" class="w-6 h-6 text-white"></i>
             </div>
-            <span class="font-bold text-xl tracking-wide">Tracker</span>
+            <span class="font-bold text-2xl tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Tracker</span>
         </div>
         
-        <div class="px-6 py-4 border-b border-white/10 bg-white/5">
-            <div class="text-sm font-semibold text-gray-200">{{ user.username }}</div>
-            <div class="text-xs text-gray-400 uppercase tracking-wide font-bold mt-0.5">
-                {{ user.role.name }}
+        <div class="mx-6 p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-4 mb-6">
+            <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-500/50">
+                {% if user.profile_picture %}
+                    <img src="/static/profile_pics/{{ user.profile_picture }}?v=1" class="w-full h-full object-cover">
+                {% else %}
+                    <div class="w-full h-full bg-indigo-600 flex items-center justify-center text-white font-bold">{{ user.username[0].upper() }}</div>
+                {% endif %}
+            </div>
+            <div>
+                <p class="text-sm font-semibold">{{ user.username }}</p>
+                <p class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">{{ user.role.name }}</p>
             </div>
         </div>
 
-        <nav class="mt-6 px-3 space-y-1">
-            <a href="/dashboard" class="flex items-center gap-3 px-4 py-3 bg-blue-600 text-white shadow-lg shadow-blue-500/20 rounded-xl transition-all">
+        <nav class="flex-1 px-4 space-y-2">
+            <a href="/dashboard" class="flex items-center gap-4 px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl shadow-lg shadow-indigo-900/50 transition-all duration-300">
                 <i data-lucide="layout-grid" class="w-5 h-5"></i> Dashboard
             </a>
-            <a href="/transactions" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-                <i data-lucide="arrow-left-right" class="w-5 h-5"></i> Transactions
+            <a href="/transactions" class="flex items-center gap-4 px-6 py-3.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 group">
+                <i data-lucide="arrow-left-right" class="w-5 h-5 group-hover:scale-110 transition"></i> Transactions
             </a>
-            <a href="/categories" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-                <i data-lucide="folder" class="w-5 h-5"></i> Categories
+            <a href="/categories" class="flex items-center gap-4 px-6 py-3.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 group">
+                <i data-lucide="folder" class="w-5 h-5 group-hover:scale-110 transition"></i> Categories
             </a>
-            <a href="/settings" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-                <i data-lucide="settings" class="w-5 h-5"></i> Settings
+            <a href="/settings" class="flex items-center gap-4 px-6 py-3.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 group">
+                <i data-lucide="settings" class="w-5 h-5 group-hover:scale-110 transition"></i> Settings
             </a>
         </nav>
 
-        <div class="mt-auto p-4 border-t border-white/10">
-            <a href="/logout" class="flex items-center gap-3 px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all">
-                <i data-lucide="log-out" class="w-5 h-5"></i> Logout
+        <div class="p-4">
+            <a href="/logout" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all duration-300 font-medium">
+                <i data-lucide="log-out" class="w-4 h-4"></i> Logout
             </a>
         </div>
     </aside>
 
     <main class="flex-1 flex flex-col relative overflow-hidden">
-        
-        <div class="flex justify-between items-start mb-8 p-8 z-10">
-            <div>
-                <h1 class="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-                <p class="text-gray-400 mt-1 text-sm">Overview of your financial activity</p>
-            </div>
-            <button onclick="openTxModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 flex items-center gap-2 font-medium transition-all hover:-translate-y-0.5 active:scale-95">
-                <i data-lucide="plus" size="18"></i>
-                <span>Add Transaction</span>
-            </button>
-        </div>
+        <div class="absolute top-[-20%] left-[20%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-        <div class="flex-1 overflow-y-auto px-8 pb-8 z-10">
-            <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-                <div class="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-600/10 rounded-full blur-[120px]"></div>
-                <div class="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-purple-600/10 rounded-full blur-[120px]"></div>
-            </div>
-
-            {% if request.query_params.get('error') == 'insufficient_balance' %}
-            <div class="mb-6 bg-rose-500/10 border border-rose-500/50 text-rose-400 px-4 py-3 rounded-xl flex items-center justify-between fade-in">
-                <div>
-                    <p class="font-bold text-sm">Insufficient Funds!</p>
-                    <p class="text-xs text-gray-300">You do not have enough balance for this expense.</p>
-                </div>
-                <a href="/dashboard" class="text-rose-400 hover:text-rose-300 font-bold text-lg">&times;</a>
-            </div>
-            {% endif %}
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 relative z-10">
-                <div class="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-3xl shadow-lg shadow-blue-900/20 relative overflow-hidden group transform hover:scale-[1.02] transition-all duration-300">
-                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition duration-500">
-                        <i data-lucide="wallet" class="w-24 h-24"></i>
-                    </div>
-                    <p class="text-blue-100 text-sm font-medium mb-1">Net Balance</p>
-                    <h3 class="text-3xl font-bold text-white">₹{{ "%.2f"|format(monthly_transfers - monthly_expenses) }}</h3>
-                </div>
-
-                <div class="bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 rounded-3xl shadow-lg shadow-emerald-900/20 relative overflow-hidden group transform hover:scale-[1.02] transition-all duration-300">
-                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition duration-500">
-                        <i data-lucide="trending-up" class="w-24 h-24"></i>
-                    </div>
-                    <p class="text-emerald-100 text-sm font-medium mb-1">Total Income</p>
-                    <h3 class="text-3xl font-bold text-white">₹{{ monthly_transfers }}</h3>
-                </div>
-
-                <div class="bg-gradient-to-br from-rose-600 to-rose-800 p-6 rounded-3xl shadow-lg shadow-rose-900/20 relative overflow-hidden group transform hover:scale-[1.02] transition-all duration-300">
-                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition duration-500">
-                        <i data-lucide="trending-down" class="w-24 h-24"></i>
-                    </div>
-                    <p class="text-rose-100 text-sm font-medium mb-1">Total Expenses</p>
-                    <h3 class="text-3xl font-bold text-white">₹{{ monthly_expenses }}</h3>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 relative z-10">
-                <div class="bg-slate-800/50 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-xl lg:col-span-1">
-                    <h3 class="text-lg font-semibold mb-6 flex items-center gap-2 text-white">
-                        <i data-lucide="pie-chart" class="w-5 h-5 text-purple-400"></i> Breakdown
-                    </h3>
-                    <div class="h-64 flex items-center justify-center">
-                        {% if chart_data %}
-                            <canvas id="myPieChart"></canvas>
-                        {% else %}
-                            <div class="text-gray-500 text-sm text-center flex flex-col items-center">
-                                <i data-lucide="pie-chart" class="w-8 h-8 opacity-30 mb-2"></i>
-                                No data available
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="bg-slate-800/50 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-xl lg:col-span-2">
-                    <h3 class="text-lg font-semibold mb-6 flex items-center gap-2 text-white">
-                        <i data-lucide="bar-chart-2" class="w-5 h-5 text-blue-400"></i> Overview
-                    </h3>
-                    <div class="h-64">
-                        <canvas id="barChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 relative z-10 custom-scrollbar">
+            <div class="max-w-6xl mx-auto fade-in">
                 
-                <div class="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl overflow-hidden">
-                    <div class="p-6 border-b border-white/10 bg-white/5 flex justify-between items-center">
-                        <h2 class="text-lg font-bold text-white">Recent Expenses</h2>
-                        <a href="/transactions" class="text-xs text-blue-400 hover:text-blue-300 font-medium transition">View All</a>
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-md relative overflow-hidden">
+                    
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                    <div class="absolute -left-10 -top-10 w-40 h-40 bg-blue-500/20 rounded-full blur-[80px] pointer-events-none"></div>
+
+                    <div class="relative z-10">
+                        <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 tracking-tight">
+                            Dashboard
+                        </h1>
+                        <div class="flex items-center gap-2 mt-2 text-gray-400 text-sm font-medium">
+                            <span id="greeting">Welcome back</span>, 
+                            <span class="text-white font-bold">{{ user.username }}</span> 👋
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1" id="liveDate">Loading date...</p>
+                    </div>
+                    
+                    <div class="mt-6 md:mt-0 relative z-10">
+                        <button onclick="openTxModal()" class="group relative bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-blue-600/30 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+                            <div class="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 origin-left"></div>
+                            <div class="flex items-center gap-2">
+                                <div class="bg-white/20 p-1 rounded-lg"><i data-lucide="plus" class="w-5 h-5"></i></div>
+                                <span>New Transaction</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                {% if request.query_params.get('error') == 'insufficient_balance' %}
+                <div class="glass-card border-l-4 border-l-rose-500 p-4 rounded-xl mb-8 flex items-center justify-between text-rose-300">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="alert-circle" class="w-6 h-6"></i>
+                        <div>
+                            <p class="font-bold">Insufficient Funds!</p>
+                            <p class="text-xs opacity-80">You cannot spend more than you have.</p>
+                        </div>
+                    </div>
+                    <a href="/dashboard" class="hover:text-white transition"><i data-lucide="x" class="w-5 h-5"></i></a>
+                </div>
+                {% endif %}
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="glass-card p-6 rounded-3xl relative overflow-hidden group hover:bg-white/5 transition">
+                        <div class="absolute top-0 right-0 p-6 opacity-20 group-hover:scale-110 transition duration-500 text-blue-400">
+                            <i data-lucide="wallet" class="w-24 h-24"></i>
+                        </div>
+                        <p class="text-blue-300 text-xs font-bold uppercase tracking-widest mb-2">Net Balance</p>
+                        <h3 class="text-4xl font-bold text-white">₹{{ "%.2f"|format(monthly_transfers - monthly_expenses) }}</h3>
+                        <div class="mt-4 h-1 w-12 bg-blue-500 rounded-full"></div>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-3xl relative overflow-hidden group hover:bg-white/5 transition">
+                        <div class="absolute top-0 right-0 p-6 opacity-20 group-hover:scale-110 transition duration-500 text-emerald-400">
+                            <i data-lucide="trending-up" class="w-24 h-24"></i>
+                        </div>
+                        <p class="text-emerald-300 text-xs font-bold uppercase tracking-widest mb-2">Total Income</p>
+                        <h3 class="text-4xl font-bold text-white">₹{{ monthly_transfers }}</h3>
+                        <div class="mt-4 h-1 w-12 bg-emerald-500 rounded-full"></div>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-3xl relative overflow-hidden group hover:bg-white/5 transition">
+                        <div class="absolute top-0 right-0 p-6 opacity-20 group-hover:scale-110 transition duration-500 text-rose-400">
+                            <i data-lucide="trending-down" class="w-24 h-24"></i>
+                        </div>
+                        <p class="text-rose-300 text-xs font-bold uppercase tracking-widest mb-2">Total Expense</p>
+                        <h3 class="text-4xl font-bold text-white">₹{{ monthly_expenses }}</h3>
+                        <div class="mt-4 h-1 w-12 bg-rose-500 rounded-full"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="glass-card p-6 rounded-3xl lg:col-span-1 flex flex-col">
+                        <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+                            <i data-lucide="pie-chart" class="w-5 h-5 text-purple-400"></i> Spending
+                        </h3>
+                        <div class="flex-1 flex items-center justify-center relative">
+                            {% if chart_data %}
+                                <canvas id="myPieChart"></canvas>
+                            {% else %}
+                                <div class="text-center text-gray-500">
+                                    <i data-lucide="pie-chart" class="w-12 h-12 mx-auto mb-2 opacity-20"></i>
+                                    <p class="text-sm">No expense data yet.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-8 rounded-3xl lg:col-span-2 flex flex-col justify-between bg-gradient-to-br from-indigo-900/40 to-purple-900/40">
+                        <div>
+                            <h3 class="text-2xl font-bold mb-2">Smart Financial Insights 💡</h3>
+                            <p class="text-gray-300 leading-relaxed mb-6">
+                                Categorizing your expenses helps you identify spending leaks. 
+                                Try to keep your "Needs" under 50% and "Wants" under 30% of your income.
+                            </p>
+                        </div>
+                        <a href="/categories" class="w-fit px-6 py-3 bg-white text-indigo-900 rounded-xl font-bold shadow-lg hover:bg-gray-200 transition flex items-center gap-2">
+                            Manage Categories <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden">
+                    <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/5">
+                        <h3 class="text-lg font-bold text-white">Recent Activity</h3>
+                        <a href="/transactions" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-wider">View All</a>
                     </div>
                     <div class="divide-y divide-white/5">
-                        {% if recent_expenses %}
+                        {% if recent_expenses or recent_transfers %}
                             {% for expense in recent_expenses %}
                             <div class="p-4 flex items-center justify-between hover:bg-white/5 transition group">
                                 <div class="flex items-center gap-4">
-                                    <div class="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400">
-                                        <i data-lucide="shopping-bag" size="18"></i>
+                                    <div class="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400 shadow-inner">
+                                        <i data-lucide="shopping-bag" class="w-5 h-5"></i>
                                     </div>
                                     <div>
                                         <p class="font-medium text-gray-200">{{ expense.description }}</p>
-                                        <p class="text-xs text-gray-500">{{ expense.created_at.strftime('%d %b, %Y') }}</p>
+                                        <p class="text-xs text-gray-500">{{ expense.created_at.strftime('%d %b') }} • Expense</p>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="font-bold text-rose-400">- ₹{{ expense.debit }}</span>
-                                    <form action="/transactions/delete/expense/{{ expense.id }}" method="POST" onsubmit="return confirm('Delete?');">
-                                        <button type="submit" class="text-gray-500 hover:text-rose-400 p-1.5 hover:bg-rose-500/10 rounded-lg transition opacity-0 group-hover:opacity-100">
-                                            <i data-lucide="trash-2" size="16"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                <span class="font-bold text-rose-400">- ₹{{ expense.debit }}</span>
                             </div>
                             {% endfor %}
-                        {% else %}
-                            <p class="p-8 text-center text-gray-500 text-sm">No recent expenses.</p>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="bg-slate-800/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl overflow-hidden">
-                    <div class="p-6 border-b border-white/10 bg-white/5 flex justify-between items-center">
-                        <h2 class="text-lg font-bold text-white">Recent Income</h2>
-                        <a href="/transactions" class="text-xs text-blue-400 hover:text-blue-300 font-medium transition">View All</a>
-                    </div>
-                    <div class="divide-y divide-white/5">
-                        {% if recent_transfers %}
+                            
                             {% for transfer in recent_transfers %}
                             <div class="p-4 flex items-center justify-between hover:bg-white/5 transition group">
                                 <div class="flex items-center gap-4">
-                                    <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                                        <i data-lucide="arrow-down-left" size="18"></i>
+                                    <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <i data-lucide="arrow-down-left" class="w-5 h-5"></i>
                                     </div>
                                     <div>
                                         <p class="font-medium text-gray-200">{{ transfer.description }}</p>
-                                        <p class="text-xs text-gray-500">{{ transfer.created_at.strftime('%d %b, %Y') }}</p>
+                                        <p class="text-xs text-gray-500">{{ transfer.created_at.strftime('%d %b') }} • Income</p>
                                     </div>
                                 </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="font-bold text-emerald-400">+ ₹{{ transfer.amount }}</span>
-                                    <form action="/transactions/delete/transfer/{{ transfer.id }}" method="POST" onsubmit="return confirm('Delete?');">
-                                        <button type="submit" class="text-gray-500 hover:text-rose-400 p-1.5 hover:bg-rose-500/10 rounded-lg transition opacity-0 group-hover:opacity-100">
-                                            <i data-lucide="trash-2" size="16"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                <span class="font-bold text-emerald-400">+ ₹{{ transfer.amount }}</span>
                             </div>
                             {% endfor %}
                         {% else %}
-                            <p class="p-8 text-center text-gray-500 text-sm">No recent income.</p>
+                            <div class="p-8 text-center text-gray-500">No recent activity.</div>
                         {% endif %}
                     </div>
                 </div>
+
             </div>
-
-            <div id="addTxModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity duration-300">
-                <div class="bg-slate-800 border border-white/10 p-8 rounded-2xl shadow-2xl w-96 transform scale-100 transition-all">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-bold text-white">Add Transaction</h2>
-                        <button onclick="closeTxModal()" class="text-gray-400 hover:text-white transition-colors">
-                            <i data-lucide="x" size="24"></i>
-                        </button>
-                    </div>
-                    
-                    <form action="/transactions/add" method="POST" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">Type</label>
-                            <select name="type" id="typeSelect" onchange="toggleCategory()" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition appearance-none cursor-pointer">
-                                <option value="expense">Expense</option>
-                                <option value="income">Income</option>
-                            </select>
-                        </div>
-
-                        <div id="categoryDiv">
-                            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">Category</label>
-                            <select name="category_id" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition appearance-none cursor-pointer">
-                                <option value="">Select Category</option>
-                                {% if categories %}
-                                    {% for cat in categories %}
-                                        <option value="{{ cat.id }}">{{ cat.name }}</option>
-                                    {% endfor %}
-                                {% else %}
-                                    <option value="" disabled>No categories found</option>
-                                {% endif %}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">Description</label>
-                            <input type="text" name="description" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" placeholder="e.g. Lunch">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-gray-400 mb-1 uppercase tracking-wider">Amount (₹)</label>
-                            <input type="number" name="amount" step="0.01" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition font-mono" placeholder="0.00">
-                        </div>
-
-                        <div class="flex justify-end gap-3 pt-4">
-                            <button type="button" onclick="closeTxModal()" class="px-5 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition font-medium">Cancel</button>
-                            <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-500/20 font-bold transition transform active:scale-95">Save</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
         </div>
     </main>
+
+    <div id="addTxModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center fade-in">
+        <div class="glass-card w-full max-w-md p-8 rounded-3xl relative border border-white/10">
+            <button onclick="closeTxModal()" class="absolute top-6 right-6 text-gray-400 hover:text-white transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <h2 class="text-2xl font-bold text-white mb-1">New Transaction</h2>
+            <p class="text-gray-400 text-sm mb-6">Record your income or expense.</p>
+
+            <form action="/transactions/add" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Type</label>
+                    <select name="type" id="typeSelect" onchange="toggleCategory()" class="glass-input w-full rounded-xl px-4 py-3 outline-none cursor-pointer appearance-none">
+                        <option value="expense" class="text-black">Expense</option>
+                        <option value="income" class="text-black">Income</option>
+                    </select>
+                </div>
+
+                <div id="categoryDiv">
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Category</label>
+                    <select name="category_id" class="glass-input w-full rounded-xl px-4 py-3 outline-none cursor-pointer appearance-none">
+                        <option value="" class="text-black">Select Category</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}" class="text-black">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Description</label>
+                    <input type="text" name="description" required placeholder="e.g. Pizza, Salary" class="glass-input w-full rounded-xl px-4 py-3 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Amount (₹)</label>
+                    <input type="number" name="amount" step="0.01" required placeholder="0.00" class="glass-input w-full rounded-xl px-4 py-3 outline-none font-mono text-lg">
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-600/20 transition transform active:scale-95">Save Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         lucide.createIcons();
 
-        // --- 1. PIE CHART ---
+        // Greeting & Date Logic
+        function updateHeader() {
+            const now = new Date();
+            const hours = now.getHours();
+            const greetingEl = document.getElementById('greeting');
+            const dateEl = document.getElementById('liveDate');
+            
+            let greet = "Welcome back";
+            if (hours < 12) greet = "Good Morning";
+            else if (hours < 18) greet = "Good Afternoon";
+            else greet = "Good Evening";
+            
+            greetingEl.innerText = greet;
+            
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateEl.innerText = now.toLocaleDateString('en-US', options);
+        }
+        updateHeader();
+
+        // Chart Logic
         const ctxPie = document.getElementById('myPieChart');
         if (ctxPie) {
             const chartLabels = JSON.parse('{{ chart_labels | tojson }}');
@@ -280,78 +320,39 @@
                         data: chartData,
                         backgroundColor: ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'],
                         borderWidth: 0,
-                        hoverOffset: 4
+                        hoverOffset: 10
                     }]
                 },
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false, 
                     plugins: { 
-                        legend: { 
-                            position: 'right', 
-                            labels: { color: '#94a3b8', usePointStyle: true, padding: 20 } 
-                        } 
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', usePointStyle: true, padding: 20, font: { family: 'Outfit' } } } 
                     }, 
-                    cutout: '70%' 
+                    cutout: '75%' 
                 }
             });
         }
 
-        // --- 2. BAR CHART ---
-        const ctxBar = document.getElementById('barChart');
-        if (ctxBar) {
-            const income = {{ monthly_transfers }};
-            const expense = {{ monthly_expenses }};
-            
-            new Chart(ctxBar, {
-                type: 'bar',
-                data: {
-                    labels: ['Income', 'Expense'],
-                    datasets: [{
-                        label: 'Amount (₹)',
-                        data: [income, expense],
-                        backgroundColor: ['#10B981', '#F43F5E'],
-                        borderRadius: 8,
-                        barThickness: 60
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { 
-                        y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, 
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        // Modal Logic
-        function openTxModal() {
-            document.getElementById('addTxModal').classList.remove('hidden');
-        }
-
-        function closeTxModal() {
-            document.getElementById('addTxModal').classList.add('hidden');
-        }
+        function openTxModal() { document.getElementById('addTxModal').classList.remove('hidden'); }
+        function closeTxModal() { document.getElementById('addTxModal').classList.add('hidden'); }
         
         function toggleCategory() {
             const type = document.getElementById('typeSelect').value;
-            const catDiv = document.getElementById('categoryDiv');
-            if (type === 'income') {
-                catDiv.style.display = 'none';
-            } else {
-                catDiv.style.display = 'block';
-            }
+            document.getElementById('categoryDiv').style.display = (type === 'income') ? 'none' : 'block';
         }
 
         window.onclick = function(event) {
-            const modal = document.getElementById('addTxModal');
-            if (event.target == modal) {
-                closeTxModal();
-            }
+            if (event.target == document.getElementById('addTxModal')) closeTxModal();
         }
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+

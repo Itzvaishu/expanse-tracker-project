@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form, Depends, status, HTTPException, UploadFile, File
-from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,21 +9,19 @@ from passlib.context import CryptContext
 from sqlalchemy import func
 from typing import Optional
 from datetime import datetime, timedelta
-import calendar
 import random
-import string 
+import string
 import shutil
 import os
 import math
 import csv
 import io
-from fastapi.responses import StreamingResponse
 
 # --- Internal Imports ---
 from app.db.session import get_db
 from app.api.v1.router import router as v1_router
 from app.services.auth_service import authenticate_user
-# Import email service if you have it, or ensure the function exists in utils
+# Ensure send_otp_email is correctly imported
 from app.utils.email import send_otp_email 
 from app.models import User, Category, Expense, Transfer, Role
 from app.services.report_service import (
@@ -35,7 +33,9 @@ from app.services.report_service import (
     get_category_pie_data,
     get_paginated_expenses,
     get_paginated_transfers,
-    get_total_transaction_count
+    get_total_transaction_count,
+    get_filtered_expenses,     # Needed for date filtering
+    get_filtered_transfers     # Needed for date filtering
 )
 
 # --- App Configuration ---
@@ -55,7 +55,6 @@ app.add_middleware(
 app.add_middleware(SessionMiddleware, secret_key="super-secret-key-change-this")
 
 # --- Static Files & Templates ---
-# Ensure profile pics directory exists
 os.makedirs("static/profile_pics", exist_ok=True) 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -167,10 +166,7 @@ async def logout(request: Request):
 
 # ================= DASHBOARD ROUTES =================
 
-
-
-
-# --- Helper Function for Date ---
+# Helper Function for Date Filtering
 def get_date_range(filter_type: str):
     now = datetime.now()
     if filter_type == "today":
@@ -183,7 +179,6 @@ def get_date_range(filter_type: str):
         start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end = now
     elif filter_type == "last_month":
-        # First date of the previous month
         last_month_end = now.replace(day=1) - timedelta(days=1)
         start = last_month_end.replace(day=1, hour=0, minute=0, second=0)
         end = last_month_end.replace(hour=23, minute=59, second=59)
@@ -191,7 +186,6 @@ def get_date_range(filter_type: str):
         return None, None # All Time
     return start, end
 
-# --- UPDATED DASHBOARD ROUTE ---
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(
     request: Request, 
@@ -205,20 +199,16 @@ async def dashboard(
     # 1. Calculate Dates
     start_date, end_date = get_date_range(filter)
 
-    # 2. Fetch Filtered Data (Using New Functions)
-    # Note: We need to import the new functions
-    from app.services.report_service import get_filtered_expenses, get_filtered_transfers, get_user_categories, get_category_pie_data
-
+    # 2. Fetch Filtered Data
     expenses = get_filtered_expenses(db, user, start_date, end_date)
     transfers = get_filtered_transfers(db, user, start_date, end_date)
 
-    # 3. Calculate Totals Manually (In Python)
+    # 3. Calculate Totals Manually
     total_income = sum(t.amount for t in transfers)
     total_expense = sum(e.debit for e in expenses)
     balance = total_income - total_expense
 
     # 4. Prepare Chart Data
-    # (Simple chart update based on filtered expenses)
     chart_labels = []
     chart_data = []
     category_map = {}
@@ -236,77 +226,16 @@ async def dashboard(
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "user": user,
-        "monthly_expenses": total_expense,   # Filtered Total
-        "monthly_transfers": total_income,   # Filtered Total
+        "monthly_expenses": total_expense,
+        "monthly_transfers": total_income,
         "balance": balance,
-        "recent_expenses": expenses[:5],     # Top 5
-        "recent_transfers": transfers[:5],   # Top 5
+        "recent_expenses": expenses[:5],
+        "recent_transfers": transfers[:5],
         "chart_labels": chart_labels,
         "chart_data": chart_data,
         "categories": categories,
-        "current_filter": filter             # HTML ko batao konsa filter active hai
+        "current_filter": filter
     })
-
-
-
-
-
-
-'''@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(
-    request: Request, 
-    db: Session = Depends(get_db),
-    user = Depends(get_current_user)
-):
-    if not user:
-        return RedirectResponse(url="/login")
-
-    # Monthly Stats (For Charts/Cards)
-    monthly_expenses = get_monthly_expense_report(db, user)
-    monthly_transfers = get_monthly_transfers(db, user)
-    
-    # Recent Activity
-    recent_expenses = get_recent_expenses(db, user, limit=5)
-    recent_transfers = get_recent_transfers(db, user, limit=5)
-    
-    # --- LIFETIME BALANCE CALCULATION ---
-    # Calculate total income (from Transfers)
-    total_income_all = db.query(func.sum(Transfer.amount)).filter(
-        (Transfer.receiver_id == user.id) | (Transfer.sender_id == user.id)
-    ).scalar() or 0.0
-
-    # Calculate total expense
-    total_expense_all = db.query(func.sum(Expense.debit)).filter(
-        Expense.user_id == user.id
-    ).scalar() or 0.0
-
-    balance = total_income_all - total_expense_all
-    
-    # Get Chart Data
-    chart_labels, chart_data = get_category_pie_data(db, user)
-    
-    # Fetch Categories (Public + Personal for dropdown)
-    personal_cats = db.query(Category).filter(Category.user_id == user.id).all()
-    public_cats = db.query(Category).join(User).join(Role).filter(Role.name == "admin").all()
-    
-    # Merge for dropdown: create a dict to avoid duplicates by name
-    all_categories_dict = {c.name: c for c in public_cats}
-    for c in personal_cats:
-        all_categories_dict[c.name] = c
-    final_categories = list(all_categories_dict.values())
-
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "user": user,
-        "monthly_expenses": monthly_expenses,
-        "monthly_transfers": monthly_transfers,
-        "balance": balance,
-        "recent_expenses": recent_expenses,
-        "recent_transfers": recent_transfers,
-        "chart_labels": chart_labels,
-        "chart_data": chart_data,
-        "categories": final_categories
-    })'''
 
 
 # ================= TRANSACTIONS ROUTES =================
@@ -347,13 +276,7 @@ async def transactions_page(
     total_pages = math.ceil(total_items / PAGE_SIZE) if total_items > 0 else 1
     
     # --- FETCH CATEGORIES FOR MODAL ---
-    personal_cats = db.query(Category).filter(Category.user_id == user.id).all()
-    public_cats = db.query(Category).join(User).join(Role).filter(Role.name == "admin").all()
-    
-    all_categories_dict = {c.name: c for c in public_cats}
-    for c in personal_cats:
-        all_categories_dict[c.name] = c
-    final_categories = list(all_categories_dict.values())
+    categories = get_user_categories(db, user)
     
     return templates.TemplateResponse("transactions.html", {
         "request": request,
@@ -361,7 +284,7 @@ async def transactions_page(
         "transactions": all_transactions, 
         "current_page": page,
         "total_pages": total_pages,
-        "categories": final_categories
+        "categories": categories
     })
 
 
@@ -379,7 +302,7 @@ async def add_transaction(
         return RedirectResponse(url="/login")
     
     if type == "expense":
-        # Calculate Balance First (Optional Check)
+        # Calculate Balance First
         total_income = db.query(func.sum(Transfer.amount)).filter(Transfer.receiver_id == user.id).scalar() or 0.0
         total_expense = db.query(func.sum(Expense.debit)).filter(Expense.user_id == user.id).scalar() or 0.0
         current_balance = total_income - total_expense
@@ -398,12 +321,12 @@ async def add_transaction(
         db.add(new_entry)
 
     else:
-        # Income: Using Transfer model (Sender/Receiver ID logic)
+        # Income
         new_entry = Transfer(
             description=description,
             amount=amount,
             sender_id=user.id,
-            receiver_id=user.id # Self-transfer for income tracking
+            receiver_id=user.id
         )
         db.add(new_entry)
         
@@ -440,25 +363,12 @@ async def categories_page(
     if not user:
         return RedirectResponse(url="/login")
 
-    # 1. User's Personal Categories
-    personal_cats = db.query(Category).filter(Category.user_id == user.id).all()
-
-    # 2. Admin's Public Categories
-    public_cats = db.query(Category).join(User).join(Role).filter(Role.name == "admin").all()
-
-    # 3. Merge (Admin ones first)
-    all_categories_dict = {}
-    for c in public_cats:
-        all_categories_dict[c.name] = c
-    for c in personal_cats:
-        all_categories_dict[c.name] = c
-        
-    final_list = list(all_categories_dict.values())
+    categories = get_user_categories(db, user)
 
     return templates.TemplateResponse("categories.html", {
         "request": request,
         "user": user,
-        "categories": final_list
+        "categories": categories
     })
 
 @app.post("/categories/add")
@@ -473,7 +383,6 @@ async def add_category(
     
     clean_name = name.strip()
     
-    # Check if category already exists for the current user
     existing = db.query(Category).filter(
         Category.name == clean_name, 
         Category.user_id == user.id
@@ -492,7 +401,6 @@ async def add_category(
         print(f"Error adding category: {e}")
         return RedirectResponse(url=f"/categories?error=Server Error: {e}", status_code=303)
 
-# --- Admin Only: Delete Category ---
 @app.post("/categories/delete/{cat_id}")
 async def delete_category(
     cat_id: int,
@@ -502,7 +410,6 @@ async def delete_category(
     category = db.query(Category).filter(Category.id == cat_id).first()
     
     if category:
-        # Allow delete only if User created it OR User is Admin
         if user.role.name == 'admin' or category.user_id == user.id:
             db.delete(category)
             db.commit()
@@ -530,9 +437,8 @@ async def settings_page(
     total_pages = 1
     user_total_pages = 1
 
-    # --- ADMIN LOGIC ---
     if user.role.name == "admin":
-        # 1. Fetch Users (Paginated)
+        # 1. Fetch Users
         total_users = db.query(User).count()
         user_total_pages = math.ceil(total_users / USER_PAGE_SIZE) if total_users > 0 else 1
         user_start = (user_page - 1) * USER_PAGE_SIZE
@@ -555,7 +461,6 @@ async def settings_page(
             if '_sa_instance_state' in t: del t['_sa_instance_state']
             t['type'] = 'transfer'
             t['description'] = t.get('description', 'Transfer')
-            # Handle potential None for receiver
             t['user_name'] = tr.receiver.username if tr.receiver else "Unknown"
             global_transactions.append(t)
 
@@ -593,7 +498,6 @@ async def update_profile(
     if not user:
         return RedirectResponse(url="/login")
 
-    # Check uniqueness (excluding self)
     existing = db.query(User).filter(
         (User.username == username) | (User.email == email),
         User.id != user.id
@@ -602,7 +506,6 @@ async def update_profile(
     if existing:
         return RedirectResponse(url="/settings?error=Username or Email already taken", status_code=303)
 
-    # File Upload
     if profile_pic and profile_pic.filename:
         upload_dir = "static/profile_pics"
         if not os.path.exists(upload_dir):
@@ -612,9 +515,7 @@ async def update_profile(
         file_name = f"{user.id}_profile.{file_extension}"
         file_path = f"{upload_dir}/{file_name}"
         
-        # Reset file pointer to beginning
         await profile_pic.seek(0)
-
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(profile_pic.file, buffer)
 
@@ -642,8 +543,6 @@ async def change_password(
 
     user.hashed_password = pwd_context.hash(new_password)
     db.commit()
-    
-    # Optional: Send email logic here
 
     return RedirectResponse(url="/settings?msg=Password Changed Successfully", status_code=303)
 
@@ -752,6 +651,132 @@ async def get_user_details(
         "transactions": transactions
     })
 
+# --- ADMIN ONLY: EXPORT SPECIFIC USER DATA (Filtered) ---
+@app.get("/admin/export/{target_user_id}")
+async def admin_export_user_csv(
+    target_user_id: int,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_user = Depends(get_admin_user)
+):
+    target_user = db.query(User).filter(User.id == target_user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Base Queries
+    exp_query = db.query(Expense).filter(Expense.user_id == target_user.id)
+    tr_query = db.query(Transfer).filter((Transfer.sender_id == target_user.id) | (Transfer.receiver_id == target_user.id))
+
+    # Apply Date Filter
+    if start_date:
+        try:
+            s_date = datetime.strptime(start_date, "%Y-%m-%d")
+            exp_query = exp_query.filter(Expense.created_at >= s_date)
+            tr_query = tr_query.filter(Transfer.created_at >= s_date)
+        except ValueError:
+            pass 
+            
+    if end_date:
+        try:
+            e_date = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+            exp_query = exp_query.filter(Expense.created_at <= e_date)
+            tr_query = tr_query.filter(Transfer.created_at <= e_date)
+        except ValueError:
+            pass
+
+    expenses = exp_query.all()
+    transfers = tr_query.all()
+
+    # CSV Generation
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Date', 'Type', 'Category', 'Description', 'Amount'])
+
+    all_data = []
+    for exp in expenses:
+        cat_name = exp.category.name if exp.category else "General"
+        all_data.append([exp.created_at, "Expense", cat_name, exp.description, -exp.debit])
+
+    for tr in transfers:
+        all_data.append([tr.created_at, "Income", "Transfer", tr.description, tr.amount])
+
+    all_data.sort(key=lambda x: x[0], reverse=True)
+
+    for row in all_data:
+        row[0] = row[0].strftime("%Y-%m-%d %H:%M")
+        writer.writerow(row)
+
+    output.seek(0)
+    filename = f"{target_user.username}_report.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+# --- EXPORT DATA TO CSV (For Logged-in User) ---
+@app.get("/export/csv")
+async def export_transactions_csv(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    if not user:
+        return RedirectResponse(url="/login")
+
+    exp_query = db.query(Expense).filter(Expense.user_id == user.id)
+    tr_query = db.query(Transfer).filter((Transfer.sender_id == user.id) | (Transfer.receiver_id == user.id))
+
+    if start_date:
+        try:
+            s_date = datetime.strptime(start_date, "%Y-%m-%d")
+            exp_query = exp_query.filter(Expense.created_at >= s_date)
+            tr_query = tr_query.filter(Transfer.created_at >= s_date)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            e_date = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+            exp_query = exp_query.filter(Expense.created_at <= e_date)
+            tr_query = tr_query.filter(Transfer.created_at <= e_date)
+        except ValueError:
+            pass
+
+    expenses = exp_query.all()
+    transfers = tr_query.all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Date', 'Type', 'Category', 'Description', 'Amount'])
+
+    all_data = []
+    for exp in expenses:
+        cat_name = exp.category.name if exp.category else "General"
+        all_data.append([exp.created_at, "Expense", cat_name, exp.description, -exp.debit])
+
+    for tr in transfers:
+        all_data.append([tr.created_at, "Income", "Transfer", tr.description, tr.amount])
+
+    all_data.sort(key=lambda x: x[0], reverse=True)
+
+    for row in all_data:
+        row[0] = row[0].strftime("%Y-%m-%d %H:%M")
+        writer.writerow(row)
+
+    output.seek(0)
+    filename = "transactions_report.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
 
 # --- FORGOT PASSWORD LOGIC ---
 
@@ -786,9 +811,6 @@ async def send_reset_otp(
 async def reset_password_page(request: Request, email: str):
     return templates.TemplateResponse("reset_password.html", {"request": request, "email": email})
 
-
-
-
 @app.post("/reset-password")
 async def perform_reset(
     request: Request,
@@ -802,15 +824,12 @@ async def perform_reset(
     if not user:
         return templates.TemplateResponse("reset_password.html", {"request": request, "email": email, "error": "User not found"})
 
-    # 1. Check OTP
     if user.reset_otp != otp:
         return templates.TemplateResponse("reset_password.html", {"request": request, "email": email, "error": "Invalid OTP"})
     
-    # 2. Check Expiry
     if user.otp_expiry and datetime.utcnow() > user.otp_expiry:
         return templates.TemplateResponse("reset_password.html", {"request": request, "email": email, "error": "OTP Expired"})
 
-    # 3. FIX: Check Password Length (This is necessary)
     if len(new_password) > 72:
          return templates.TemplateResponse("reset_password.html", {
             "request": request, 
@@ -818,63 +837,9 @@ async def perform_reset(
             "error": "Password too long! Keep it under 72 characters."
         })
 
-    # 4. Hash Password
     user.hashed_password = pwd_context.hash(new_password)
-    
-    # 5. Clear OTP
     user.reset_otp = None
     user.otp_expiry = None
     db.commit()
 
     return RedirectResponse(url="/login?msg=Password Reset Successful", status_code=303)
-# app/main.py
-
-# --- EXPORT DATA TO CSV ---
-@app.get("/export/csv")
-async def export_transactions_csv(
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
-):
-    if not user:
-        return RedirectResponse(url="/login")
-
-    # 1. Fetch Data
-    expenses = db.query(Expense).filter(Expense.user_id == user.id).all()
-    transfers = db.query(Transfer).filter((Transfer.sender_id == user.id) | (Transfer.receiver_id == user.id)).all()
-
-    # 2. Create CSV file in memory
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    # Header Row
-    writer.writerow(['Date', 'Type', 'Category', 'Description', 'Amount'])
-
-    # Add Rows
-    all_data = []
-
-    for exp in expenses:
-        cat_name = exp.category.name if exp.category else "General"
-        all_data.append([exp.created_at, "Expense", cat_name, exp.description, -exp.debit])
-
-    for tr in transfers:
-        all_data.append([tr.created_at, "Income", "Transfer", tr.description, tr.amount])
-
-    # Sort by date (Newest First)
-    all_data.sort(key=lambda x: x[0], reverse=True)
-
-    # Write to CSV
-    for row in all_data:
-        # Convert date to clean format
-        formatted_date = row[0].strftime("%Y-%m-%d %H:%M")
-        row[0] = formatted_date
-        writer.writerow(row)
-
-    # Move pointer to start
-    output.seek(0)
-
-    # 3. Return file download response
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=transactions_report.csv"}
-    )

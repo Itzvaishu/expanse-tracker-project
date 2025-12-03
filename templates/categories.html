@@ -3,126 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Categories - Tracker</title>
+    <title>Categories</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        /* Animations */
-        .fade-in { animation: fadeIn 0.4s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style> 
+        body { font-family: 'Outfit', sans-serif; }
+        
+        /* Animated Background */
+        .animated-bg {
+            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 100%);
+            background-size: 200% 200%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+
+        /* Glass Effect */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        .glass-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .glass-input:focus {
+            border-color: #6366f1;
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 10px; }
+        
+        .fade-in { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-900 text-white font-sans overflow-hidden h-screen flex">
+<body class="animated-bg text-white h-screen flex overflow-hidden">
 
-    <aside class="w-64 bg-slate-800/50 backdrop-blur-md border-r border-white/10 flex flex-col p-6 hidden md:flex">
-        <div class="flex items-center gap-3 mb-10">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">T</div>
-            <h1 class="text-xl font-bold tracking-wide">Tracker</h1>
+    <aside class="w-72 glass-card border-r-0 m-4 rounded-3xl flex flex-col hidden md:flex z-50">
+        <div class="p-8 flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <i data-lucide="zap" class="w-6 h-6 text-white"></i>
+            </div>
+            <span class="font-bold text-2xl tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Tracker</span>
         </div>
         
-        <nav class="flex-1 space-y-2">
-            <a href="/dashboard" class="block p-3 text-gray-400 hover:bg-white/5 rounded-xl transition flex items-center gap-2">
-                <i data-lucide="layout-grid" class="w-5 h-5"></i> Dashboard
+        <div class="mx-6 p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-4 mb-6">
+            <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-500/50">
+                {% if user.profile_picture %}
+                    <img src="/static/profile_pics/{{ user.profile_picture }}?v=1" class="w-full h-full object-cover">
+                {% else %}
+                    <div class="w-full h-full bg-indigo-600 flex items-center justify-center text-white font-bold">{{ user.username[0].upper() }}</div>
+                {% endif %}
+            </div>
+            <div>
+                <p class="text-sm font-semibold">{{ user.username }}</p>
+                <p class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">{{ user.role.name }}</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-2">
+            <a href="/dashboard" class="flex items-center gap-4 px-6 py-3.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 group">
+                <i data-lucide="layout-grid" class="w-5 h-5 group-hover:scale-110 transition"></i> Dashboard
             </a>
-            <a href="/transactions" class="block p-3 text-gray-400 hover:bg-white/5 rounded-xl transition flex items-center gap-2">
-                <i data-lucide="arrow-left-right" class="w-5 h-5"></i> Transactions
+            <a href="/transactions" class="flex items-center gap-4 px-6 py-3.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 group">
+                <i data-lucide="arrow-left-right" class="w-5 h-5 group-hover:scale-110 transition"></i> Transactions
             </a>
-            <a href="/categories" class="block p-3 bg-blue-600 text-white shadow-lg shadow-blue-500/30 rounded-xl transition flex items-center gap-2">
+            <a href="/categories" class="flex items-center gap-4 px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl shadow-lg shadow-indigo-900/50 transition-all duration-300">
                 <i data-lucide="folder" class="w-5 h-5"></i> Categories
             </a>
-            <a href="/settings" class="block p-3 text-gray-400 hover:bg-white/5 rounded-xl transition flex items-center gap-2">
-                <i data-lucide="settings" class="w-5 h-5"></i> Settings
+            <a href="/settings" class="flex items-center gap-4 px-6 py-3.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 group">
+                <i data-lucide="settings" class="w-5 h-5 group-hover:scale-110 transition"></i> Settings
             </a>
         </nav>
+
+        <div class="p-4">
+            <a href="/logout" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all duration-300 font-medium">
+                <i data-lucide="log-out" class="w-4 h-4"></i> Logout
+            </a>
+        </div>
     </aside>
 
     <main class="flex-1 flex flex-col relative overflow-hidden">
-        
-        <header class="h-20 border-b border-white/10 flex items-center justify-between px-8 bg-slate-900/80 backdrop-blur-md z-50">
-            <div>
-                <h2 class="text-2xl font-semibold text-white">Categories</h2>
-                <p class="text-xs text-gray-400 mt-1">Manage your spending tags</p>
-            </div>
-            
-            <div class="flex items-center gap-4">
-                <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-lg shadow-blue-500/20 transition transform hover:scale-[1.02]">
-                    <i data-lucide="plus" class="w-4 h-4"></i> Add Category
-                </button>
+        <div class="absolute top-[-20%] left-[20%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-10 relative z-10 custom-scrollbar">
+            <div class="max-w-6xl mx-auto fade-in">
                 
-                {% if user.profile_picture %}
-                    <img src="/static/profile_pics/{{ user.profile_picture }}" class="w-10 h-10 rounded-full border-2 border-slate-700 object-cover">
-                {% else %}
-                    <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&color=fff" class="w-10 h-10 rounded-full border-2 border-slate-700">
-                {% endif %}
-            </div>
-        </header>
-
-        <div class="flex-1 p-8 overflow-y-auto relative">
-            <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-                <div class="absolute top-[20%] left-[20%] w-96 h-96 bg-blue-600/5 rounded-full blur-[100px]"></div>
-                <div class="absolute bottom-[10%] right-[10%] w-96 h-96 bg-purple-600/5 rounded-full blur-[100px]"></div>
-            </div>
-
-            <div class="relative z-20 max-w-6xl mx-auto mb-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+                    <div>
+                        <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">Categories</h1>
+                        <p class="text-gray-400 mt-2">Organize and manage your spending tags.</p>
+                    </div>
+                    <button onclick="openModal()" class="bg-white text-indigo-900 px-6 py-3 rounded-xl font-bold shadow-lg shadow-white/10 hover:scale-105 transition flex items-center gap-2">
+                        <i data-lucide="plus" class="w-5 h-5"></i> Add Category
+                    </button>
+                </div>
+                
                 {% if request.query_params.get('msg') %}
-                <div class="bg-green-500/10 border border-green-500/50 text-green-400 px-4 py-3 rounded-xl flex items-center gap-2">
+                <div class="glass-card border-l-4 border-l-emerald-500 p-4 rounded-xl mb-8 flex items-center gap-3 text-emerald-300 shadow-lg">
                     <i data-lucide="check-circle" class="w-5 h-5"></i> {{ request.query_params.get('msg') }}
                 </div>
                 {% endif %}
                 {% if request.query_params.get('error') %}
-                <div class="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl flex items-center gap-2">
-                    <i data-lucide="alert-circle" class="w-5 h-5"></i> {{ request.query_params.get('error') }}
+                <div class="glass-card border-l-4 border-l-rose-500 p-4 rounded-xl mb-8 flex items-center gap-3 text-rose-300 shadow-lg">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i> {{ request.query_params.get('error') }}
                 </div>
                 {% endif %}
-            </div>
 
-            <div class="relative z-10 max-w-7xl mx-auto fade-in">
-                
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {% if categories %}
                         {% for cat in categories %}
-                        <div class="bg-slate-800/40 backdrop-blur-md border border-white/5 p-5 rounded-2xl shadow-lg hover:border-blue-500/30 transition duration-300 group flex items-center justify-between">
-                            <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition shadow-inner border border-blue-500/10">
-                                    <i data-lucide="tag" class="w-5 h-5"></i>
+                        <div class="glass-card p-6 rounded-3xl hover:bg-white/5 transition group relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition duration-500 text-white">
+                                <i data-lucide="folder" class="w-24 h-24"></i>
+                            </div>
+                            
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-blue-300 border border-white/10">
+                                    <span class="text-xl font-bold">{{ cat.name[0].upper() }}</span>
                                 </div>
-                                <div>
-                                    <h3 class="font-bold text-lg text-white capitalize tracking-wide">{{ cat.name }}</h3>
-                                    {% if cat.user_id == user.id %}
-                                        <p class="text-[10px] text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded w-fit mt-1">My Category</p>
-                                    {% else %}
-                                        <p class="text-[10px] text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded w-fit mt-1">Public</p>
+                                
+                                <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                                    <button class="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition" title="Edit">
+                                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                                    </button>
+                                    
+                                    {% if user.role.name == 'admin' or cat.user_id == user.id %}
+                                    <form action="/categories/delete/{{ cat.id }}" method="POST" onsubmit="return confirm('Delete this category?');">
+                                        <button type="submit" class="p-2 hover:bg-rose-500/20 rounded-lg text-gray-400 hover:text-rose-400 transition" title="Delete">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </form>
                                     {% endif %}
                                 </div>
                             </div>
                             
-                            <div class="flex gap-2">
-                                {% if cat.user_id == user.id or user.role.name == 'admin' %}
-                                <form action="/categories/delete/{{ cat.id }}" method="POST" onsubmit="return confirm('Delete this category?');">
-                                    <button class="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition" title="Delete">
-                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
-                                    </button>
-                                </form>
-                                {% else %}
-                                <div class="relative group/tooltip">
-                                    <button class="p-2 text-gray-600 cursor-not-allowed">
-                                        <i data-lucide="lock" class="w-4 h-4"></i>
-                                    </button>
-                                </div>
-                                {% endif %}
-                            </div>
+                            <h3 class="text-xl font-bold text-white mb-1">{{ cat.name }}</h3>
+                            <p class="text-sm text-gray-400 flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full {{ 'bg-emerald-500' if cat.user_id == None else 'bg-indigo-500' }}"></span>
+                                {{ 'Public' if cat.user_id == None else 'Private' }}
+                            </p>
                         </div>
                         {% endfor %}
                     {% else %}
-                        <div class="col-span-3 flex flex-col items-center justify-center py-20 text-gray-500">
-                             <div class="bg-slate-800 p-4 rounded-full mb-3 border border-white/5 inline-block">
-                                <i data-lucide="folder-open" class="w-8 h-8 opacity-50"></i>
-                            </div>
-                            <p>No categories found. Create one!</p>
+                        <div class="col-span-full text-center py-16 text-gray-500 glass-card rounded-3xl">
+                            <i data-lucide="folder-open" class="w-12 h-12 mx-auto mb-4 opacity-30"></i>
+                            <p>No categories found. Create one to get started!</p>
                         </div>
                     {% endif %}
                 </div>
@@ -131,23 +168,20 @@
         </div>
     </main>
 
-    <div id="addCategoryModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center fade-in">
-        <div class="bg-slate-800 border border-white/10 p-8 rounded-3xl shadow-2xl w-full max-w-sm relative transform transition-all scale-100">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-xl font-bold text-white">New Category</h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-white transition">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
-            </div>
-            
-            <form action="/categories/add" method="POST" class="space-y-6">
+    <div id="addCategoryModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center fade-in">
+        <div class="glass-card w-full max-w-md p-8 rounded-3xl relative border border-white/10">
+            <button onclick="closeModal()" class="absolute top-6 right-6 text-gray-400 hover:text-white transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <h2 class="text-2xl font-bold text-white mb-1">New Category</h2>
+            <p class="text-gray-400 text-sm mb-6">Create a tag to organize your expenses.</p>
+
+            <form action="/categories/add" method="POST" class="space-y-4">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-2 uppercase tracking-wider font-semibold">Category Name</label>
-                    <input type="text" name="name" required placeholder="e.g. Gym, Freelance" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-blue-500 transition placeholder-gray-600">
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Name</label>
+                    <input type="text" name="name" required placeholder="e.g. Gym, Internet, Food" class="glass-input w-full rounded-xl px-4 py-3 outline-none transition">
                 </div>
-                <div class="flex justify-end gap-3 pt-2">
-                    <button type="button" onclick="closeModal()" class="px-5 py-3 text-sm font-medium text-gray-400 hover:text-white rounded-xl hover:bg-white/5 transition">Cancel</button>
-                    <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/25 transition">Create Category</button>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-600/20 transition transform active:scale-95">Create Category</button>
                 </div>
             </form>
         </div>
@@ -159,8 +193,7 @@
         function closeModal() { document.getElementById('addCategoryModal').classList.add('hidden'); }
         
         window.onclick = function(event) {
-            const modal = document.getElementById('addCategoryModal');
-            if (event.target == modal) closeModal();
+            if (event.target == document.getElementById('addCategoryModal')) closeModal();
         }
     </script>
 </body>

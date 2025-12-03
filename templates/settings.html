@@ -3,317 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings</title>
+    <title>Settings - Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style> 
-        body { font-family: 'Inter', sans-serif; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        body { font-family: 'Outfit', sans-serif; }
+        .animated-bg { background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 100%); background-size: 200% 200%; animation: gradientBG 15s ease infinite; }
+        .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }
+        .glass-input { background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); color: white; }
+        .glass-input:focus { border-color: #6366f1; background: rgba(0, 0, 0, 0.4); box-shadow: 0 0 15px rgba(99, 102, 241, 0.3); }
+        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+        .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 10px; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
     </style>
 </head>
-<body class="bg-slate-900 text-white font-sans overflow-hidden h-screen flex">
+<body class="animated-bg text-white h-screen flex overflow-hidden">
 
-    <aside class="w-64 bg-slate-800/50 backdrop-blur-md border-r border-white/10 flex flex-col hidden md:flex">
-        <div class="p-6 flex items-center gap-3 border-b border-white/10">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <i data-lucide="wallet" class="w-5 h-5 text-white"></i>
-            </div>
-            <span class="font-bold text-xl tracking-wide">Tracker</span>
+    <aside class="w-72 glass-card border-r-0 m-4 rounded-3xl flex flex-col hidden md:flex z-50">
+        <div class="p-8 flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30"><i data-lucide="zap" class="w-6 h-6 text-white"></i></div>
+            <span class="font-bold text-2xl tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Tracker</span>
         </div>
         
-        <div class="px-6 py-4 border-b border-white/10 bg-white/5">
-            <div class="text-sm font-semibold text-gray-200">{{ user.username }}</div>
-            <div class="text-xs text-gray-400 uppercase tracking-wide font-bold mt-0.5">
-                {{ user.role.name }}
+        <div class="mx-6 p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-4 mb-6">
+            <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-500/50">
+                {% if user.profile_picture %} <img src="/static/profile_pics/{{ user.profile_picture }}?v=1" class="w-full h-full object-cover">
+                {% else %} <div class="w-full h-full bg-indigo-600 flex items-center justify-center text-white font-bold">{{ user.username[0].upper() }}</div> {% endif %}
             </div>
+            <div><p class="text-sm font-semibold">{{ user.username }}</p><p class="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">{{ user.role.name }}</p></div>
         </div>
 
-        <nav class="mt-6 px-3 space-y-1">
-            <a href="/dashboard" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-                <i data-lucide="layout-grid" class="w-5 h-5"></i> Dashboard
-            </a>
-            <a href="/transactions" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-                <i data-lucide="arrow-left-right" class="w-5 h-5"></i> Transactions
-            </a>
-            <a href="/categories" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-white/5 hover:text-white rounded-xl transition-all">
-                <i data-lucide="folder" class="w-5 h-5"></i> Categories
-            </a>
-            <a href="/settings" class="flex items-center gap-3 px-4 py-3 bg-blue-600 text-white shadow-lg shadow-blue-500/20 rounded-xl transition-all">
-                <i data-lucide="settings" class="w-5 h-5"></i> Settings
-            </a>
+        <nav class="flex-1 px-4 space-y-2">
+            <a href="/dashboard" class="flex items-center gap-4 px-6 py-3.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 group"><i data-lucide="layout-grid" class="w-5 h-5 group-hover:scale-110 transition"></i> Dashboard</a>
+            <a href="/transactions" class="flex items-center gap-4 px-6 py-3.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 group"><i data-lucide="arrow-left-right" class="w-5 h-5 group-hover:scale-110 transition"></i> Transactions</a>
+            <a href="/categories" class="flex items-center gap-4 px-6 py-3.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all duration-300 group"><i data-lucide="folder" class="w-5 h-5 group-hover:scale-110 transition"></i> Categories</a>
+            <a href="/settings" class="flex items-center gap-4 px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl shadow-lg shadow-indigo-900/50 transition-all duration-300"><i data-lucide="settings" class="w-5 h-5"></i> Settings</a>
         </nav>
-
-        <div class="mt-auto p-4 border-t border-white/10">
-            <a href="/logout" class="flex items-center gap-3 px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all">
-                <i data-lucide="log-out" class="w-5 h-5"></i> Logout
-            </a>
-        </div>
+        <div class="p-4"><a href="/logout" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all duration-300 font-medium"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</a></div>
     </aside>
 
     <main class="flex-1 flex flex-col relative overflow-hidden">
-        
-        <header class="h-20 border-b border-white/10 flex items-center justify-between px-8 bg-slate-900/80 backdrop-blur-md z-50">
-            <h2 id="page-title" class="text-2xl font-semibold">Settings</h2>
+        <div class="absolute top-[-20%] left-[20%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-            <div class="relative">
-                <button onclick="toggleDropdown()" class="flex items-center gap-3 p-2 rounded-full hover:bg-white/5 transition focus:outline-none">
-                    <div class="text-right hidden sm:block">
-                        <p class="text-sm font-medium">{{ user.username }}</p>
-                        <p class="text-xs text-gray-400">{{ user.email }}</p>
+        <div class="flex-1 overflow-y-auto p-4 md:p-10 relative z-10 custom-scrollbar">
+            <div class="max-w-5xl mx-auto slide-up">
+                <div class="flex justify-between items-end mb-10">
+                    <div><h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">Settings</h1><p class="text-gray-400 mt-2">Manage your preferences and security.</p></div>
+                    <div class="hidden md:flex gap-2 items-center bg-white/5 border border-white/10 p-2 rounded-xl backdrop-blur-md">
+                         <input type="date" id="userStartDate" class="glass-input px-2 py-1 text-xs rounded-lg w-28">
+                         <input type="date" id="userEndDate" class="glass-input px-2 py-1 text-xs rounded-lg w-28">
+                         <button onclick="downloadUserReport()" class="bg-emerald-600 hover:bg-emerald-500 p-2 rounded-lg text-white transition shadow-lg"><i data-lucide="download" class="w-4 h-4"></i></button>
                     </div>
-                    <div class="w-10 h-10 rounded-full overflow-hidden border border-gray-600">
-                        {% if user.profile_picture %}
-                            <img src="/static/profile_pics/{{ user.profile_picture }}?v=1" class="w-full h-full object-cover">
-                        {% else %}
-                            <div class="w-full h-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                                {{ user.username[0].upper() }}
-                            </div>
-                        {% endif %}
-                    </div>
-                    <i data-lucide="chevron-down" size="16" class="text-gray-400"></i>
-                </button>
+                </div>
 
-                <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-slate-800 border border-white/10 rounded-xl shadow-2xl py-2 z-50 origin-top-right transition-all">
-                    <div class="px-4 py-3 border-b border-white/10">
-                        <p class="text-sm font-bold text-white">Account</p>
-                        <p class="text-xs text-gray-400 truncate">{{ user.email }}</p>
-                    </div>
-                    <button onclick="switchTab('profile')" class="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2 transition">
-                        <i data-lucide="user-pen" class="w-4 h-4"></i> Edit Profile
-                    </button>
-                    <button onclick="switchTab('security')" class="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 flex items-center gap-2 transition">
-                        <i data-lucide="lock" class="w-4 h-4"></i> Change Password
-                    </button>
+                {% if request.query_params.get('msg') %} <div class="glass-card border-l-4 border-l-emerald-500 p-4 rounded-xl mb-8 flex items-center gap-3 text-emerald-300 shadow-lg"><i data-lucide="check-circle" class="w-5 h-5"></i> {{ request.query_params.get('msg') }}</div> {% endif %}
+                {% if request.query_params.get('error') %} <div class="glass-card border-l-4 border-l-rose-500 p-4 rounded-xl mb-8 flex items-center gap-3 text-rose-300 shadow-lg"><i data-lucide="alert-triangle" class="w-5 h-5"></i> {{ request.query_params.get('error') }}</div> {% endif %}
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     
-                    {% if user.role.name == 'admin' %}
-                    <div class="h-px bg-white/10 my-1"></div>
-                    <button onclick="switchTab('admin')" class="w-full text-left px-4 py-3 text-sm text-yellow-400 hover:bg-yellow-500/10 flex items-center gap-2 transition">
-                        <i data-lucide="shield" class="w-4 h-4"></i> Admin Panel
-                    </button>
-                    {% endif %}
-                    
-                    <div class="h-px bg-white/10 my-1"></div>
-                    <a href="/logout" class="block w-full text-left px-4 py-3 text-sm text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 transition">
-                        <i data-lucide="log-out" class="w-4 h-4"></i> Logout
-                    </a>
-                </div>
-            </div>
-        </header>
-
-        <div class="flex-1 p-8 overflow-y-auto relative">
-            <div class="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-                <div class="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-600/10 rounded-full blur-[120px]"></div>
-                <div class="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-purple-600/10 rounded-full blur-[120px]"></div>
-            </div>
-
-            <div class="relative z-10 max-w-5xl mx-auto">
-
-                {% if request.query_params.get('msg') %}
-                <div class="bg-emerald-500/10 border border-emerald-500/50 text-emerald-400 px-4 py-3 rounded-xl mb-6 flex items-center gap-2 fade-in">
-                    <i data-lucide="check-circle" class="w-5 h-5"></i> {{ request.query_params.get('msg') }}
-                </div>
-                {% endif %}
-                {% if request.query_params.get('error') %}
-                <div class="bg-rose-500/10 border border-rose-500/50 text-rose-400 px-4 py-3 rounded-xl mb-6 flex items-center gap-2 fade-in">
-                    <i data-lucide="alert-circle" class="w-5 h-5"></i> {{ request.query_params.get('error') }}
-                </div>
-                {% endif %}
-
-                <div id="section-profile" class="fade-in bg-slate-800/60 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-xl max-w-2xl mx-auto">
-                    <h2 class="text-xl font-bold mb-6 border-b border-white/10 pb-4">Edit Profile</h2>
-                    <form action="/settings/update-profile" method="POST" enctype="multipart/form-data">
-                        <div class="flex flex-col items-center mb-8">
-                            <div class="relative group cursor-pointer" onclick="document.getElementById('file-upload').click()">
-                                {% if user.profile_picture %}
-                                    <img src="/static/profile_pics/{{ user.profile_picture }}?v=2" class="w-24 h-24 rounded-full border-4 border-slate-700 object-cover shadow-lg group-hover:opacity-75 transition">
-                                {% else %}
-                                    <div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-3xl border-4 border-slate-700 shadow-lg group-hover:opacity-75 transition">
-                                        {{ user.username[0].upper() }}
+                    <div class="lg:col-span-1 space-y-8">
+                        <div class="glass-card p-8 rounded-3xl text-center relative overflow-hidden">
+                            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-indigo-500/30 rounded-full blur-[50px] -z-10"></div>
+                            <div class="relative inline-block mb-4">
+                                <div class="w-32 h-32 rounded-full p-1 bg-gradient-to-tr from-indigo-500 to-purple-500">
+                                    <div class="w-full h-full rounded-full overflow-hidden bg-slate-900 border-4 border-slate-900">
+                                        {% if user.profile_picture %} <img src="/static/profile_pics/{{ user.profile_picture }}?v=3" class="w-full h-full object-cover">
+                                        {% else %} <div class="w-full h-full flex items-center justify-center bg-slate-800 text-4xl font-bold text-white">{{ user.username[0].upper() }}</div> {% endif %}
                                     </div>
-                                {% endif %}
-                                <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                                    <i data-lucide="camera" class="text-white"></i>
                                 </div>
+                                <button onclick="toggleEditProfile()" class="absolute bottom-0 right-0 bg-white text-indigo-900 p-2 rounded-full shadow-lg hover:scale-110 transition"><i data-lucide="camera" class="w-4 h-4"></i></button>
                             </div>
-                            <input id="file-upload" type="file" name="profile_pic" class="hidden" accept="image/*">
-                            <button type="button" onclick="document.getElementById('file-upload').click()" class="mt-3 text-sm text-blue-400 hover:text-blue-300 font-medium">Change Photo</button>
+                            <h2 class="text-2xl font-bold text-white">{{ user.username }}</h2>
+                            <p class="text-gray-400 text-sm mb-6">{{ user.email }}</p>
+                            <button onclick="toggleEditProfile()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg transition-all">Edit Profile</button>
                         </div>
-
-                        <div class="space-y-6">
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-2">Username</label>
-                                <input type="text" name="username" value="{{ user.username }}" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition">
-                            </div>
-                            <div>
-                                <label class="block text-sm text-gray-400 mb-2">Email</label>
-                                <input type="email" name="email" value="{{ user.email }}" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition">
-                            </div>
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-500/20 transition transform active:scale-95">Update Profile</button>
-                        </div>
-                    </form>
-                    
-                    <div class="mt-8 pt-6 border-t border-white/10 flex justify-between items-center">
-                        <div>
-                            <h3 class="text-sm font-bold text-white">Export Data</h3>
-                            <p class="text-xs text-gray-400">Download your history as CSV.</p>
-                        </div>
-                        <a href="/export/csv" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-lg shadow-emerald-500/20">
-                            <i data-lucide="download" class="w-4 h-4"></i> Download
-                        </a>
-                    </div>
-                </div>
-
-                <div id="section-security" class="hidden fade-in bg-slate-800/60 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-xl max-w-2xl mx-auto">
-                    <div class="flex flex-col items-center mb-6">
-                        <div class="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mb-4">
-                            <i data-lucide="lock" class="text-yellow-500 w-8 h-8"></i>
-                        </div>
-                        <h3 class="text-xl font-semibold">Security Settings</h3>
                     </div>
 
-                    <form action="/settings/change-password" method="POST" class="space-y-6">
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-2">Current Password</label>
-                            <input type="password" name="current_password" placeholder="••••••••" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition">
+                    <div class="lg:col-span-2 space-y-8">
+                        
+                        <div id="profile-form-container" class="glass-card p-8 rounded-3xl">
+                            <div class="flex items-center gap-3 mb-6"><div class="p-2 bg-blue-500/20 rounded-lg text-blue-400"><i data-lucide="user-cog" class="w-5 h-5"></i></div><h3 class="text-xl font-bold">Account Details</h3></div>
+                            <form action="/settings/update-profile" method="POST" enctype="multipart/form-data" class="space-y-5">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div><label class="block text-xs text-gray-400 uppercase font-bold mb-2 ml-1">Username</label><input type="text" name="username" value="{{ user.username }}" class="glass-input w-full rounded-xl px-4 py-3 outline-none transition"></div>
+                                    <div><label class="block text-xs text-gray-400 uppercase font-bold mb-2 ml-1">Role</label><input type="text" value="{{ user.role.name | title }}" disabled class="glass-input w-full rounded-xl px-4 py-3 opacity-50 cursor-not-allowed"></div>
+                                </div>
+                                <div><label class="block text-xs text-gray-400 uppercase font-bold mb-2 ml-1">Email Address</label><input type="email" name="email" value="{{ user.email }}" class="glass-input w-full rounded-xl px-4 py-3 outline-none transition"></div>
+                                <input type="file" name="profile_pic" id="hidden-file-input" class="hidden">
+                                <div class="flex justify-end pt-2"><button type="submit" class="px-8 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition border border-white/5">Save Changes</button></div>
+                            </form>
                         </div>
-                        <div>
-                            <label class="block text-sm text-gray-400 mb-2">New Password</label>
-                            <input type="password" name="new_password" placeholder="New strong password" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition">
-                        </div>
-                        <button type="submit" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition">Change Password</button>
-                    </form>
-                </div>
 
-                {% if user.role.name == 'admin' %}
-                <div id="section-admin" class="hidden fade-in space-y-8">
-                    
-                    <div class="bg-slate-800/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl overflow-hidden">
-                        <div class="p-6 border-b border-white/10 bg-white/5 flex justify-between items-center">
-                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                                <i data-lucide="users" class="w-5 h-5 text-blue-400"></i> User Management
-                            </h3>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm text-gray-400">
-                                <thead class="bg-white/5 text-gray-200 uppercase font-bold">
-                                    <tr>
-                                        <th class="px-6 py-4">User</th>
-                                        <th class="px-6 py-4">Email</th>
-                                        <th class="px-6 py-4">Role</th>
-                                        <th class="px-6 py-4 text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-white/5">
-                                    {% for u in all_users %}
-                                    <tr class="hover:bg-white/5 transition">
-                                        <td class="px-6 py-4 font-medium text-white flex items-center gap-3">
-                                            {% if u.profile_picture %}
-                                                <img src="/static/profile_pics/{{ u.profile_picture }}" class="w-8 h-8 rounded-full object-cover border border-white/10">
-                                            {% else %}
-                                                <div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-xs text-white">{{ u.username[0].upper() }}</div>
-                                            {% endif %}
-                                            {{ u.username }}
-                                        </td>
-                                        <td class="px-6 py-4">{{ u.email }}</td>
-                                        <td class="px-6 py-4">
-                                            <span class="px-2 py-1 rounded text-xs font-bold uppercase {{ 'bg-yellow-500/20 text-yellow-400' if u.role.name == 'admin' else 'bg-blue-500/20 text-blue-400' }}">
-                                                {{ u.role.name }}
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 text-right flex justify-end gap-2">
-                                            <button onclick="openUserDetailModal('{{ u.id }}')" class="text-blue-400 hover:text-blue-300 bg-blue-400/10 p-2 rounded-lg transition" title="View Details">
-                                                <i data-lucide="eye" class="w-4 h-4"></i>
-                                            </button>
-                                            {% if u.id != user.id %}
-                                                {% if u.role.name == 'user' %}
-                                                    <form action="/users/promote/{{ u.id }}" method="POST">
-                                                        <button class="text-emerald-400 hover:text-emerald-300 bg-emerald-400/10 p-2 rounded-lg transition" title="Promote"><i data-lucide="arrow-up-circle" class="w-4 h-4"></i></button>
-                                                    </form>
-                                                {% else %}
-                                                    <form action="/users/demote/{{ u.id }}" method="POST">
-                                                        <button class="text-rose-400 hover:text-rose-300 bg-rose-400/10 p-2 rounded-lg transition" title="Demote"><i data-lucide="arrow-down-circle" class="w-4 h-4"></i></button>
-                                                    </form>
+                        {% if user.role.name == 'admin' %}
+                        <div id="section-admin" class="glass-card p-1 rounded-3xl overflow-hidden">
+                            <div class="p-6 bg-gradient-to-r from-rose-500/10 to-orange-500/10 border-b border-white/5 flex justify-between items-center">
+                                <div class="flex items-center gap-3"><div class="p-2 bg-rose-500/20 rounded-lg text-rose-400"><i data-lucide="shield-alert" class="w-5 h-5"></i></div><h3 class="text-xl font-bold">User Management</h3></div>
+                            </div>
+                            <div class="overflow-x-auto p-2">
+                                <table class="w-full text-left text-sm text-gray-400">
+                                    <thead class="text-xs uppercase font-bold text-gray-500 bg-black/20 rounded-lg">
+                                        <tr><th class="px-6 py-4 rounded-l-lg">User</th><th class="px-6 py-4">Role</th><th class="px-6 py-4 text-right rounded-r-lg">Action</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-white/5">
+                                        {% for u in all_users %}
+                                        <tr class="hover:bg-white/5 transition group">
+                                            <td class="px-6 py-4 flex items-center gap-3 text-white">
+                                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs border border-white/10">{% if u.profile_picture %}<img src="/static/profile_pics/{{ u.profile_picture }}" class="w-full h-full object-cover rounded-full">{% else %}{{ u.username[0].upper() }}{% endif %}</div>{{ u.username }}
+                                            </td>
+                                            <td class="px-6 py-4"><span class="px-2 py-1 rounded text-[10px] font-bold uppercase border {{ 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' if u.role.name == 'admin' else 'bg-blue-500/10 text-blue-400 border-blue-500/20' }}">{{ u.role.name }}</span></td>
+                                            <td class="px-6 py-4 text-right flex justify-end gap-2 opacity-50 group-hover:opacity-100 transition">
+                                                <button onclick="openUserDetailModal('{{ u.id }}')" class="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                                                {% if u.id != user.id %}
+                                                    {% if u.role.name == 'user' %}<form action="/users/promote/{{ u.id }}" method="POST" class="inline"><button class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500 hover:text-white transition"><i data-lucide="arrow-up" class="w-4 h-4"></i></button></form>
+                                                    {% else %}<form action="/users/demote/{{ u.id }}" method="POST" class="inline"><button class="p-2 bg-rose-500/10 text-rose-400 rounded-lg hover:bg-rose-500 hover:text-white transition"><i data-lucide="arrow-down" class="w-4 h-4"></i></button></form>{% endif %}
                                                 {% endif %}
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-800/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl overflow-hidden">
-                        <div class="p-6 border-b border-white/10 bg-white/5 flex justify-between items-center">
-                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                                <i data-lucide="activity" class="w-5 h-5 text-purple-400"></i> Global Transactions
-                            </h3>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm text-gray-400">
-                                <thead class="bg-white/5 text-gray-200 uppercase font-bold">
-                                    <tr>
-                                        <th class="px-6 py-4">User</th>
-                                        <th class="px-6 py-4">Desc</th>
-                                        <th class="px-6 py-4">Amount</th>
-                                        <th class="px-6 py-4 text-right">Delete</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-white/5">
-                                    {% if global_transactions %}
-                                        {% for tx in global_transactions %}
-                                        <tr class="hover:bg-white/5 transition">
-                                            <td class="px-6 py-4 text-white font-medium">{{ tx.user_name }}</td>
-                                            <td class="px-6 py-4">
-                                                {{ tx.description }}
-                                                <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded ml-2 uppercase tracking-wider">{{ tx.type }}</span>
-                                            </td>
-                                            <td class="px-6 py-4 font-bold {{ 'text-rose-400' if tx.type == 'expense' else 'text-emerald-400' }}">
-                                                {{ "-" if tx.type == 'expense' else "+" }}₹{{ tx.amount }}
-                                            </td>
-                                            <td class="px-6 py-4 text-right">
-                                                <form action="/admin/transactions/delete/{{ tx.type }}/{{ tx.id }}" method="POST" onsubmit="return confirm('Delete this user data?');">
-                                                    <button class="text-gray-500 hover:text-rose-500 p-2 hover:bg-rose-500/10 rounded-lg transition">
-                                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                                    </button>
-                                                </form>
                                             </td>
                                         </tr>
                                         {% endfor %}
-                                    {% else %}
-                                        <tr><td colspan="4" class="p-6 text-center text-gray-500">No transactions found.</td></tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="p-4 border-t border-white/10 flex justify-between items-center text-xs text-gray-400">
-                            <span>Page {{ current_page }} of {{ total_pages }}</span>
-                            <div class="flex gap-2">
-                                {% if current_page > 1 %}<a href="?page={{ current_page - 1 }}&user_page={{ user_current_page }}" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded transition">Prev</a>{% endif %}
-                                {% if current_page < total_pages %}<a href="?page={{ current_page + 1 }}&user_page={{ user_current_page }}" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded transition">Next</a>{% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="p-4 border-t border-white/5 flex justify-between items-center text-xs text-gray-500">
+                                <span>Page {{ user_current_page }} of {{ user_total_pages }}</span>
+                                <div class="flex gap-2">
+                                    {% if user_current_page > 1 %}<a href="?user_page={{ user_current_page - 1 }}&page={{ current_page }}&tab=admin" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded transition text-white">Prev</a>{% endif %}
+                                    {% if user_current_page < user_total_pages %}<a href="?user_page={{ user_current_page + 1 }}&page={{ current_page }}&tab=admin" class="px-3 py-1 bg-white/5 hover:bg-white/10 rounded transition text-white">Next</a>{% endif %}
+                                </div>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
-                {% endif %}
-
             </div>
-        </main>
-    </div>
+        </div>
+    </main>
 
-    <div id="userDetailModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center fade-in">
-        <div class="bg-slate-800 border border-white/10 w-full max-w-2xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col relative">
-            <div class="p-6 border-b border-white/10 bg-slate-900/50 flex justify-between items-center">
-                <h3 class="text-xl font-bold text-white">User Details</h3>
-                <button onclick="closeUserDetailModal()" class="text-gray-400 hover:text-white transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+    <div id="userDetailModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-lg z-[100] flex items-center justify-center fade-in">
+        <div class="glass-card w-full max-w-2xl h-[85vh] rounded-3xl overflow-hidden flex flex-col relative border border-white/10">
+            <div class="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <h3 class="text-xl font-bold text-white">User Insights</h3>
+                <button onclick="closeUserDetailModal()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
             <div class="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar" id="modalContent">
                 <div class="text-center text-gray-500">Loading...</div>
@@ -323,66 +156,91 @@
 
     <script>
         lucide.createIcons();
-        const dropdown = document.getElementById('user-dropdown');
-        const profileSection = document.getElementById('section-profile');
-        const securitySection = document.getElementById('section-security');
-        const adminSection = document.getElementById('section-admin');
-        const pageTitle = document.getElementById('page-title');
+        function toggleEditProfile() { document.getElementById('hidden-file-input').click(); }
 
-        function toggleDropdown() { dropdown.classList.toggle('hidden'); }
-
-        function switchTab(tabName) {
-            dropdown.classList.add('hidden');
-            profileSection.classList.add('hidden');
-            securitySection.classList.add('hidden');
-            if(adminSection) adminSection.classList.add('hidden');
-
-            if (tabName === 'profile') {
-                profileSection.classList.remove('hidden');
-                pageTitle.innerText = "Edit Profile";
-            } else if (tabName === 'security') {
-                securitySection.classList.remove('hidden');
-                pageTitle.innerText = "Security Settings";
-            } else if (tabName === 'admin') {
-                if(adminSection) adminSection.classList.remove('hidden');
-                pageTitle.innerText = "Admin Dashboard";
-            }
+        // --- USER EXPORT ---
+        function downloadUserReport() {
+            const startDate = document.getElementById('userStartDate').value;
+            const endDate = document.getElementById('userEndDate').value;
+            let url = "/export/csv";
+            if (startDate && endDate) url += `?start_date=${startDate}&end_date=${endDate}`;
+            window.location.href = url;
         }
 
-        async function openUserDetailModal(userId) {
+        // --- ADMIN EXPORT ---
+        function downloadAdminUserReport(userId) {
+            const startDate = document.getElementById('modalStart').value;
+            const endDate = document.getElementById('modalEnd').value;
+            let url = `/admin/export/${userId}`;
+            if (startDate && endDate) url += `?start_date=${startDate}&end_date=${endDate}`;
+            window.location.href = url;
+        }
+        
+        // --- FILTER & OPEN MODAL ---
+        async function openUserDetailModal(userId, startDate='', endDate='') {
             const modal = document.getElementById('userDetailModal');
             const content = document.getElementById('modalContent');
             modal.classList.remove('hidden');
             
+            let url = `/admin/user-details/${userId}`;
+            if (startDate && endDate) url += `?start_date=${startDate}&end_date=${endDate}`;
+
             try {
-                const response = await fetch(`/admin/user-details/${userId}`);
+                const response = await fetch(url);
                 const data = await response.json();
                 if(response.ok) {
                     let txHtml = data.transactions.length > 0 ? data.transactions.map(tx => `
-                        <div class="flex justify-between items-center p-3 bg-slate-900/50 rounded-xl border border-white/5">
-                            <div><p class="text-white font-medium">${tx.description}</p><p class="text-xs text-gray-500">${tx.date} • ${tx.category}</p></div>
-                            <span class="font-bold ${tx.type === 'expense' ? 'text-rose-400' : 'text-emerald-400'}">${tx.type === 'expense' ? '-' : '+'}₹${tx.amount}</span>
+                        <div class="flex justify-between items-center p-4 bg-black/30 rounded-xl border border-white/5 hover:border-white/20 transition">
+                            <div><p class="text-white font-medium">${tx.description}</p><p class="text-xs text-gray-500 mt-1">${tx.date} • <span class="text-indigo-400">${tx.category}</span></p></div>
+                            <span class="font-bold text-lg ${tx.type === 'expense' ? 'text-rose-400' : 'text-emerald-400'}">${tx.type === 'expense' ? '-' : '+'}₹${tx.amount}</span>
                         </div>
-                    `).join('') : '<p class="text-center text-gray-500">No history.</p>';
+                    `).join('') : '<div class="text-center py-10 text-gray-600 italic">No data found for selected range.</div>';
 
                     content.innerHTML = `
-                        <div class="flex items-center gap-6"><div class="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-3xl font-bold text-white border-4 border-slate-700">${data.username[0].toUpperCase()}</div><div><h2 class="text-2xl font-bold text-white">${data.username}</h2><p class="text-gray-400">${data.email}</p><span class="text-xs uppercase font-bold px-2 py-1 rounded mt-2 inline-block bg-white/10 text-gray-300">${data.role}</span></div></div>
-                        <div class="grid grid-cols-3 gap-4 text-center">
-                            <div class="bg-slate-900/50 p-4 rounded-xl border border-white/5"><p class="text-xs text-gray-400 uppercase">Balance</p><p class="text-xl font-bold text-white">₹${data.balance}</p></div>
-                            <div class="bg-slate-900/50 p-4 rounded-xl border border-white/5"><p class="text-xs text-gray-400 uppercase">Income</p><p class="text-xl font-bold text-emerald-400">₹${data.total_income}</p></div>
-                            <div class="bg-slate-900/50 p-4 rounded-xl border border-white/5"><p class="text-xs text-gray-400 uppercase">Expenses</p><p class="text-xl font-bold text-rose-400">₹${data.total_expense}</p></div>
+                        <div class="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
+                            <div class="flex items-center gap-6">
+                                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 p-0.5 shadow-xl">
+                                    <div class="w-full h-full bg-black rounded-2xl flex items-center justify-center overflow-hidden">
+                                        ${data.profile_pic ? `<img src="/static/profile_pics/${data.profile_pic}" class="w-full h-full object-cover">` : `<span class="text-3xl font-bold text-white">${data.username[0].toUpperCase()}</span>`}
+                                    </div>
+                                </div>
+                                <div><h2 class="text-3xl font-bold text-white">${data.username}</h2><p class="text-indigo-300">${data.email}</p><span class="text-[10px] uppercase font-bold px-2 py-1 rounded mt-2 inline-block bg-white/10 border border-white/10 text-gray-300">${data.role}</span></div>
+                            </div>
                         </div>
-                        <div><h4 class="text-sm font-bold text-gray-400 uppercase mb-4">History</h4><div class="space-y-3">${txHtml}</div></div>
+                        
+                        <div class="bg-white/5 p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row gap-3 items-end mb-8">
+                            <div class="w-full"><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">From</label><input type="date" id="modalStart" value="${startDate}" class="glass-input w-full px-3 py-2 rounded-xl text-sm"></div>
+                            <div class="w-full"><label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">To</label><input type="date" id="modalEnd" value="${endDate}" class="glass-input w-full px-3 py-2 rounded-xl text-sm"></div>
+                            <div class="flex gap-2 w-full md:w-auto">
+                                <button onclick="openUserDetailModal('${userId}', document.getElementById('modalStart').value, document.getElementById('modalEnd').value)" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm font-bold transition">Filter</button>
+                                <button onclick="downloadAdminUserReport('${userId}')" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl text-white transition"><i data-lucide="download" class="w-5 h-5"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div class="bg-white/5 p-4 rounded-2xl border border-white/10"><p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Net Balance</p><p class="text-2xl font-bold text-white">₹${data.balance}</p></div>
+                            <div class="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20"><p class="text-[10px] text-emerald-400 uppercase font-bold mb-1">Income</p><p class="text-2xl font-bold text-emerald-400">₹${data.total_income}</p></div>
+                            <div class="bg-rose-500/10 p-4 rounded-2xl border border-rose-500/20"><p class="text-[10px] text-rose-400 uppercase font-bold mb-1">Expense</p><p class="text-2xl font-bold text-rose-400">₹${data.total_expense}</p></div>
+                        </div>
+                        <div class="mt-4"><h4 class="text-xs font-bold text-gray-500 uppercase mb-4 tracking-wider border-b border-white/10 pb-2">History</h4><div class="space-y-3">${txHtml}</div></div>
                     `;
+                    lucide.createIcons(); 
                 }
-            } catch(e) { content.innerHTML = `<p class="text-red-400 text-center">Failed to load data.</p>`; }
+            } catch(e) { content.innerHTML = `<p class="text-rose-400 text-center">Failed to load data.</p>`; }
         }
 
         function closeUserDetailModal() { document.getElementById('userDetailModal').classList.add('hidden'); }
-        window.onclick = function(e) {
-            if (!e.target.closest('button') && !e.target.closest('#user-dropdown')) dropdown.classList.add('hidden');
-            if (e.target == document.getElementById('userDetailModal')) closeUserDetailModal();
-        }
+        window.onload = function() { if (new URLSearchParams(window.location.search).get('tab') === 'admin') document.getElementById('section-admin').scrollIntoView(); }
+        window.onclick = function(e) { if (e.target == document.getElementById('userDetailModal')) closeUserDetailModal(); }
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+

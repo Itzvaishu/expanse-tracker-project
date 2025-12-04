@@ -2,10 +2,9 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from pydantic import EmailStr
 from typing import List
 
-# --- APNA GMAIL CONFIG YAHAN DAALEIN ---
 conf = ConnectionConfig(
-    MAIL_USERNAME = "vaishuverma804@gmail.com",      # Apna Asli Email
-    MAIL_PASSWORD = "klex nknp bucr nxiz",         # Google App Password (Not login password)
+    MAIL_USERNAME = "vaishuverma804@gmail.com",      
+    MAIL_PASSWORD = "klex nknp bucr nxiz",         
     MAIL_FROM = "your-email@gmail.com",
     MAIL_PORT = 587,
     MAIL_SERVER = "smtp.gmail.com",

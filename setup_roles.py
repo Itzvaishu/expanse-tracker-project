@@ -1,12 +1,12 @@
 import sys
 import os
 
-# --- FIX: Current Folder ko Path mein add karna ---
+# add the project root directory to the sys.path
 sys.path.append(os.getcwd())
 
 from app.db.session import SessionLocal, engine
-from app.db.base import Base  # Base yahan se import hoga
-from app.models import Role, Permission, User, Category # Models yahan se
+from app.db.base import Base 
+from app.models import Role, Permission, User, Category 
 
 print("🚀 Script Started...")
 
@@ -27,7 +27,7 @@ def init_db():
         db.commit()
 
         # 3. Create Roles
-        # Permissions fetch karo
+        # Permissions fetch for role assignment
         perm_delete = db.query(Permission).filter_by(slug="category:delete").first()
         
         # Admin Role

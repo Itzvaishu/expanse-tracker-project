@@ -16,7 +16,7 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     is_active: bool
-    balance: int
+    balance: float
     account_number: str
 
     model_config = ConfigDict(from_attributes=True)

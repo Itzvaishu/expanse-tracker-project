@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from app.schemas.user_schema import User, UserCreate, Token
+from app.schemas.user_schema import User, UserCreate, Token, LoginRequest
 from app.services.auth_service import create_user, authenticate_user, create_access_token_for_user, get_user_balance
 from app.db.session import get_db
 from app.core.security import get_current_user
@@ -41,27 +41,3 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 
 
-'''from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
-from app.schemas.user_schema import User, UserCreate
-from app.services.auth_service import create_user, authenticate_user, create_access_token_for_user
-from app.db.session import get_db
-
-router = APIRouter(prefix="/auth", tags=["auth"])
-
-@router.post("/register", response_model=User)
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = create_user(db=db, user=user)
-    return db_user
-
-@router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # NOTE: Swagger sends the email in the 'username' field
-    email = form_data.username
-    password = form_data.password
-    user = authenticate_user(db, email, password)
-    if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
-    access_token = create_access_token_for_user(user)
-    return {"access_token": access_token, "token_type": "bearer"}'''

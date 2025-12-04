@@ -1,7 +1,6 @@
 import random
 import string
 from sqlalchemy.orm import Session
-# Import 'or_' to allow login by Username OR Email (optional but recommended)
 from sqlalchemy import or_ 
 from app.models import user as user_model
 from app.schemas import user_schema as user_schema
@@ -63,39 +62,3 @@ def get_user_balance(db: Session, user_id: int):
 
 
 
-'''import random
-import string
-from sqlalchemy.orm import Session
-from app.models import user as user_model
-from app.schemas import user_schema as user_schema
-from app.core.security import get_password_hash, verify_password, create_access_token
-
-def generate_account_number():
-    import uuid
-    return str(uuid.uuid4().int)[:20]
-
-def create_user(db: Session, user: user_schema.UserCreate):
-    existing_user = db.query(user_model.User).filter(
-        (user_model.User.email == user.email) | (user_model.User.username == user.username)
-    ).first()
-    if existing_user:
-        raise ValueError("User with this email or username already exists")
-    hashed_password = get_password_hash(user.password)
-    account_number = generate_account_number()
-    db_user = user_model.User(username=user.username, email=user.email, hashed_password=hashed_password, account_number=account_number, balance=0)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
-
-def authenticate_user(db: Session, username: str, password: str):
-    user = db.query(user_model.User).filter(user_model.User.username == username).first()
-    if not user:
-        return False
-    if not verify_password(password, user.hashed_password):
-        return False
-    return user
-
-def create_access_token_for_user(user: user_model.User):
-    access_token = create_access_token(subject=user.email)
-    return access_token'''

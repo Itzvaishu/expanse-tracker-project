@@ -9,7 +9,7 @@ Base = declarative_base()
 
 password = "Qsefthuko321!@#"
 encoded_password = quote(password)
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://root:{encoded_password}@127.0.0.1/vaishudb"
+SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://root:{encoded_password}@localhost/expense_tracker"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

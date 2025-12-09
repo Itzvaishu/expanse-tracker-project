@@ -1,3 +1,4 @@
+import time 
 from fastapi import FastAPI, Request, Form, Depends, status, HTTPException, UploadFile, File
 from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,12 +17,12 @@ import os
 import math
 import csv
 import io
-
-# --- Internal Imports ---
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.db.session import get_db
 from app.api.v1.router import router as v1_router
 from app.services.auth_service import authenticate_user
-# Ensure send_otp_email is correctly imported
 from app.utils.email import send_otp_email 
 from app.models import User, Category, Expense, Transfer, Role
 from app.services.report_service import (
@@ -34,12 +35,32 @@ from app.services.report_service import (
     get_paginated_expenses,
     get_paginated_transfers,
     get_total_transaction_count,
-    get_filtered_expenses,     # Needed for date filtering
-    get_filtered_transfers     # Needed for date filtering
+    get_filtered_expenses,     
+    get_filtered_transfers     
 )
-
-# --- App Configuration ---
+from app.services.category_service import create_category
 app = FastAPI()
+
+# --- RATE LIMITER SETUP ---
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+# Custom Handler for Rate Limit Errors (Shows HTML instead of JSON for Login)
+@app.exception_handler(RateLimitExceeded)
+async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    # If API call, return JSON error
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            {"error": f"Rate limit exceeded: {exc.detail}"}, 
+            status_code=429
+        )
+    
+    # If Login page, return HTML with error
+    return templates.TemplateResponse("login.html", {
+        "request": request, 
+        "error": "Too many login attempts! Please wait 1 minute."
+    }, status_code=429)
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # --- Middleware ---
@@ -92,7 +113,9 @@ async def root_redirect():
 async def login_get(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": None})
 
+# --- APPLY RATE LIMIT HERE ---
 @app.post("/login", response_class=HTMLResponse)
+@limiter.limit("5/minute") 
 async def login_post(
     request: Request, 
     username: str = Form(...), 
@@ -383,21 +406,17 @@ async def add_category(
     
     clean_name = name.strip()
     
-    existing = db.query(Category).filter(
-        Category.name == clean_name, 
-        Category.user_id == user.id
-    ).first()
+    # Use the service function to create category safely
+    # This handles checking for existing categories to avoid IntegrityError
+    from app.schemas import CategoryCreate
+    from app.services.category_service import create_category
     
-    if existing:
-        return RedirectResponse(url="/categories?error=Category already exists!", status_code=303)
-    
+    cat_schema = CategoryCreate(name=clean_name)
     try:
-        new_cat = Category(name=clean_name, user_id=user.id)
-        db.add(new_cat)
-        db.commit()
+        new_cat = create_category(db, cat_schema, user.id)
         return RedirectResponse(url="/categories?msg=Category Added Successfully", status_code=303)
     except Exception as e:
-        db.rollback()
+        # If create_category raises an exception (other than IntegrityError which it handles), catch it here
         print(f"Error adding category: {e}")
         return RedirectResponse(url=f"/categories?error=Server Error: {e}", status_code=303)
 
@@ -512,8 +531,16 @@ async def update_profile(
             os.makedirs(upload_dir)
 
         file_extension = profile_pic.filename.split(".")[-1]
-        file_name = f"{user.id}_profile.{file_extension}"
+        # Use timestamp to ensure unique filename and bypass browser caching
+        timestamp = int(time.time())
+        file_name = f"{user.id}_profile_{timestamp}.{file_extension}"
         file_path = f"{upload_dir}/{file_name}"
+        
+        # Remove old profile picture if exists
+        if user.profile_picture:
+            old_path = f"{upload_dir}/{user.profile_picture}"
+            if os.path.exists(old_path):
+                os.remove(old_path)
         
         await profile_pic.seek(0)
         with open(file_path, "wb") as buffer:
@@ -604,6 +631,8 @@ async def admin_delete_transaction(
 @app.get("/admin/user-details/{target_user_id}")
 async def get_user_details(
     target_user_id: int,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     db: Session = Depends(get_db),
     admin_user = Depends(get_admin_user)
 ):
@@ -611,8 +640,29 @@ async def get_user_details(
     if not user:
         return JSONResponse({"error": "User not found"}, status_code=404)
 
-    expenses = db.query(Expense).filter(Expense.user_id == user.id).all()
-    transfers = db.query(Transfer).filter((Transfer.sender_id == user.id) | (Transfer.receiver_id == user.id)).all()
+    # Base queries
+    exp_query = db.query(Expense).filter(Expense.user_id == user.id)
+    tr_query = db.query(Transfer).filter((Transfer.sender_id == user.id) | (Transfer.receiver_id == user.id))
+
+    # Apply Filters
+    if start_date:
+        try:
+            s_date = datetime.strptime(start_date, "%Y-%m-%d")
+            exp_query = exp_query.filter(Expense.created_at >= s_date)
+            tr_query = tr_query.filter(Transfer.created_at >= s_date)
+        except ValueError:
+            pass 
+            
+    if end_date:
+        try:
+            e_date = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+            exp_query = exp_query.filter(Expense.created_at <= e_date)
+            tr_query = tr_query.filter(Transfer.created_at <= e_date)
+        except ValueError:
+            pass
+
+    expenses = exp_query.all()
+    transfers = tr_query.all()
 
     transactions = []
     total_income = 0

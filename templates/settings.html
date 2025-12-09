@@ -92,19 +92,57 @@
 
                     <div class="lg:col-span-2 space-y-8">
                         
-                        <div id="profile-form-container" class="glass-card p-8 rounded-3xl hidden">
+                        <div id="profile-form-container" class="glass-card p-8 rounded-3xl hidden relative z-20">
                             <div class="flex justify-between items-center mb-6">
-                                <div class="flex items-center gap-3"><div class="p-2 bg-blue-500/20 rounded-lg text-blue-400"><i data-lucide="user-cog" class="w-5 h-5"></i></div><h3 class="text-xl font-bold">Update Details</h3></div>
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-blue-500/20 rounded-lg text-blue-400"><i data-lucide="user-cog" class="w-5 h-5"></i></div>
+                                    <h3 class="text-xl font-bold">Update Details</h3>
+                                </div>
                                 <button onclick="toggleEditProfile()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
                             </div>
+
                             <form action="/settings/update-profile" method="POST" enctype="multipart/form-data" class="space-y-5">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div><label class="block text-xs text-gray-400 uppercase font-bold mb-2 ml-1">Username</label><input type="text" name="username" value="{{ user.username }}" class="glass-input w-full rounded-xl px-4 py-3 outline-none transition"></div>
-                                    <div><label class="block text-xs text-gray-400 uppercase font-bold mb-2 ml-1">Role</label><input type="text" value="{{ user.role.name | title }}" disabled class="glass-input w-full rounded-xl px-4 py-3 opacity-50 cursor-not-allowed"></div>
+                                
+                                <div class="flex items-center justify-center mb-6">
+                                    <div class="relative group cursor-pointer" onclick="document.getElementById('hidden-file-input').click()">
+                                        <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-dashed border-gray-600 group-hover:border-blue-500 transition flex items-center justify-center bg-slate-800">
+                                            {% if user.profile_picture %}
+                                                <img id="profile-preview-image" src="/static/profile_pics/{{ user.profile_picture }}" class="w-full h-full object-cover opacity-60 group-hover:opacity-40 transition">
+                                            {% else %}
+                                                <img id="profile-preview-image" class="hidden w-full h-full object-cover opacity-60 group-hover:opacity-40 transition">
+                                                <span id="profile-initials" class="text-2xl font-bold text-gray-500 group-hover:text-blue-400">{{ user.username[0].upper() }}</span>
+                                            {% endif %}
+                                            <div class="absolute inset-0 flex items-center justify-center">
+                                                <i data-lucide="camera" class="w-8 h-8 text-gray-300 group-hover:text-white transition"></i>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-center text-blue-400 mt-2 font-semibold">Tap to Change Photo</p>
+                                    </div>
                                 </div>
-                                <div><label class="block text-xs text-gray-400 uppercase font-bold mb-2 ml-1">Email Address</label><input type="email" name="email" value="{{ user.email }}" class="glass-input w-full rounded-xl px-4 py-3 outline-none transition"></div>
-                                <input type="file" name="profile_pic" id="hidden-file-input" class="hidden">
-                                <div class="flex justify-end pt-2"><button type="submit" class="px-8 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium transition border border-white/5">Save Changes</button></div>
+
+                                <input type="file" name="profile_pic" id="hidden-file-input" class="hidden" accept="image/*" onchange="previewImage(this)">
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label class="block text-xs text-gray-400 uppercase font-bold mb-2 ml-1">Username</label>
+                                        <input type="text" name="username" value="{{ user.username }}" class="glass-input w-full rounded-xl px-4 py-3 outline-none transition">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-gray-400 uppercase font-bold mb-2 ml-1">Role</label>
+                                        <input type="text" value="{{ user.role.name | title }}" disabled class="glass-input w-full rounded-xl px-4 py-3 opacity-50 cursor-not-allowed">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-xs text-gray-400 uppercase font-bold mb-2 ml-1">Email Address</label>
+                                    <input type="email" name="email" value="{{ user.email }}" class="glass-input w-full rounded-xl px-4 py-3 outline-none transition">
+                                </div>
+
+                                <div class="flex justify-end pt-2">
+                                    <button type="submit" class="px-8 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition shadow-lg shadow-blue-600/20 transform active:scale-95">
+                                        Save Changes
+                                    </button>
+                                </div>
                             </form>
                         </div>
 
@@ -181,11 +219,29 @@
         function toggleEditProfile() { 
             const formContainer = document.getElementById('profile-form-container');
             formContainer.classList.toggle('hidden');
-            // Trigger file input only if opening for visual cue (optional)
-            // if (!formContainer.classList.contains('hidden')) document.getElementById('hidden-file-input').click();
         }
 
-        // --- MAX DATE LOGIC (New) ---
+        // --- UPDATED PREVIEW FUNCTION ---
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var img = document.getElementById('profile-preview-image');
+                    var initials = document.getElementById('profile-initials');
+                    
+                    // Show image, hide initials
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
+                    // Remove opacity so the preview is clear
+                    img.classList.remove('opacity-60', 'group-hover:opacity-40');
+                    
+                    if(initials) initials.classList.add('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // --- MAX DATE LOGIC ---
         function setMaxDate() {
             const today = new Date().toISOString().split('T')[0];
             document.querySelectorAll('input[type="date"]').forEach(el => el.max = today);
